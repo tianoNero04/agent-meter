@@ -4,7 +4,7 @@ set -euo pipefail
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 build_root="$project_root/Build"
 app_path="$build_root/AgentUsageDashboard.app"
-binary_path="$project_root/.build/arm64-apple-macosx/release/AgentUsageDashboard"
+binary_path="$(swift build -c release --show-bin-path)/AgentUsageDashboard"
 
 mkdir -p "$build_root" "$app_path/Contents/MacOS" "$app_path/Contents/Resources"
 
