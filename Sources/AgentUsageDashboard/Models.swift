@@ -45,9 +45,9 @@ struct RateLimitWindow: Codable, Identifiable, Hashable {
     var label: String {
         if let minutes = windowMinutes {
             switch minutes {
-            case 240...360: return "5 小时"
-            case 9000...11000: return "本周"
-            default: return "(minutes) 分钟"
+            case 300: return "5 小时"
+            case 10080: return "本周"
+            default: return "\(minutes) 分钟"
             }
         }
         return id

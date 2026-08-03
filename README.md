@@ -8,6 +8,7 @@
 
 - macOS 原生 SwiftUI `MenuBarExtra`，最低 macOS 13 Ventura。
 - Codex 账号额度：通过官方 `codex app-server` 查询 `account/rateLimits/read`。
+- 额度窗口完全按账号服务端返回的 `windowDurationMins` 显示；如果账号当前只返回 `10080` 分钟，就只显示“本周”，不会假定存在 5 小时窗口。
 - Codex 账号 Token 总量与每日 buckets：通过 `account/usage/read` 查询。
 - Codex 本机 Token 与模型分布：增量解析 `~/.codex/sessions/**/*.jsonl`。
 - Kimi Code 本机 Token 与模型分布：解析 `~/.kimi-code/sessions/**/wire.jsonl`。

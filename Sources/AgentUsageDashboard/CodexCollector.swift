@@ -27,10 +27,17 @@ struct CodexLogCollector {
         var total = TokenUsage.zero
         var modelTotals: [String: TokenUsage] = [:]
         var latestWindows: [RateLimitWindow] = []
+        var latestRateLimitDate: Date?
         var latestModel: String?
+        let fractionalTimestampFormatter = ISO8601DateFormatter()
+        fractionalTimestampFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let timestampFormatter = ISO8601DateFormatter()
+        timestampFormatter.formatOptions = [.withInternetDateTime]
 
         for case let fileURL as URL in enumerator where fileURL.pathExtension == "jsonl" {
             guard let content = try? String(contentsOf: fileURL, encoding: .utf8) else { continue }
+            let fileDate = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate)
+                ?? nil
             var currentModel: String?
 
             for line in content.split(whereSeparator: { $0.isNewline }) {
@@ -53,7 +60,14 @@ struct CodexLogCollector {
                     }
 
                     if let rateLimits = JSONSupport.object(payload, path: ["rate_limits"]) {
-                        latestWindows = parseWindows(rateLimits)
+                        let timestamp = JSONSupport.string(object["timestamp"])
+                            .flatMap { fractionalTimestampFormatter.date(from: $0) ?? timestampFormatter.date(from: $0) }
+                            ?? fileDate
+                            ?? .distantPast
+                        if latestRateLimitDate == nil || timestamp >= latestRateLimitDate! {
+                            latestWindows = parseWindows(rateLimits)
+                            latestRateLimitDate = timestamp
+                        }
                     }
                 }
             }

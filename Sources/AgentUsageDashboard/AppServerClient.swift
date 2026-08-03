@@ -28,67 +28,109 @@ struct CodexAppServerClient {
     func fetch() async throws -> CodexAccountData {
         guard let executableURL else { throw AppServerError.executableNotFound }
 
+        let text = try await Task.detached(priority: .utility) {
+            try Self.runProcess(executableURL: executableURL)
+        }.value
+        return try Self.parse(text)
+    }
+
+    private static func runProcess(executableURL: URL) throws -> String {
+
         let input = Pipe()
         let output = Pipe()
-        let errorOutput = Pipe()
         let process = Process()
         process.executableURL = executableURL
         process.arguments = ["app-server", "--stdio"]
         process.standardInput = input
         process.standardOutput = output
-        process.standardError = errorOutput
+        process.standardError = FileHandle.nullDevice
 
         try process.run()
 
-        let requests: [[String: Any]] = [
-            [
-                "method": "initialize",
-                "id": 0,
-                "params": [
-                    "clientInfo": [
-                        "name": "agent_usage_dashboard",
-                        "title": "Agent Usage Dashboard",
-                        "version": "0.1.0"
-                    ]
-                ]
-            ],
-            ["method": "initialized", "params": [:]],
-            ["method": "account/read", "id": 1, "params": ["refreshToken": false]],
-            ["method": "account/rateLimits/read", "id": 2],
-            ["method": "account/usage/read", "id": 3]
-        ]
-
-        for request in requests {
-            let data = try JSONSerialization.data(withJSONObject: request)
-            input.fileHandleForWriting.write(data)
-            input.fileHandleForWriting.write(Data([0x0A]))
-        }
-        input.fileHandleForWriting.closeFile()
-
-        let outputTask = Task.detached {
-            output.fileHandleForReading.readDataToEndOfFile()
-        }
-        let timeoutTask = Task.detached {
-            try? await Task.sleep(nanoseconds: 8_000_000_000)
+        let timeoutTimer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
+        timeoutTimer.schedule(deadline: .now() + .seconds(8))
+        timeoutTimer.setEventHandler {
             if process.isRunning { process.terminate() }
         }
-
-        let outputData = await outputTask.value
-        timeoutTask.cancel()
-        if process.isRunning { process.terminate() }
-        process.waitUntilExit()
-
-        guard let text = String(data: outputData, encoding: .utf8) else {
-            throw AppServerError.invalidResponse
+        timeoutTimer.resume()
+        defer {
+            timeoutTimer.cancel()
+            input.fileHandleForWriting.closeFile()
+            if process.isRunning { process.terminate() }
+            process.waitUntilExit()
         }
-        return try parse(text)
+
+        let initialize: [String: Any] = [
+            "method": "initialize",
+            "id": 0,
+            "params": [
+                "clientInfo": [
+                    "name": "agent_usage_dashboard",
+                    "title": "Agent Usage Dashboard",
+                    "version": "0.1.0"
+                ]
+            ]
+        ]
+        let initialized: [String: Any] = ["method": "initialized", "params": [:]]
+        let accountRead: [String: Any] = [
+            "method": "account/read",
+            "id": 1,
+            "params": ["refreshToken": false]
+        ]
+        let rateLimitsRead: [String: Any] = ["method": "account/rateLimits/read", "id": 2]
+        let usageRead: [String: Any] = ["method": "account/usage/read", "id": 3]
+
+        var lines: [String] = []
+        try send(initialize, to: input.fileHandleForWriting)
+        try readUntilResponse(id: 0, from: output.fileHandleForReading, lines: &lines)
+
+        try send(initialized, to: input.fileHandleForWriting)
+        for (id, request) in [(1, accountRead), (2, rateLimitsRead), (3, usageRead)] {
+            try send(request, to: input.fileHandleForWriting)
+            try readUntilResponse(id: id, from: output.fileHandleForReading, lines: &lines)
+        }
+
+        return lines.joined(separator: "\n")
     }
 
-    private func parse(_ text: String) throws -> CodexAccountData {
+    private static func send(_ request: [String: Any], to handle: FileHandle) throws {
+        let data = try JSONSerialization.data(withJSONObject: request)
+        handle.write(data)
+        handle.write(Data([0x0A]))
+    }
+
+    private static func readUntilResponse(
+        id: Int,
+        from handle: FileHandle,
+        lines: inout [String]
+    ) throws {
+        while let line = try readLine(from: handle) {
+            lines.append(line)
+            guard let object = JSONSupport.jsonObject(from: line) else { continue }
+            if JSONSupport.int(object["id"]) == id { return }
+        }
+        throw AppServerError.invalidResponse
+    }
+
+    private static func readLine(from handle: FileHandle) throws -> String? {
+        var data = Data()
+        while true {
+            guard let chunk = try handle.read(upToCount: 1), !chunk.isEmpty else {
+                return data.isEmpty ? nil : String(data: data, encoding: .utf8)
+            }
+            data.append(chunk)
+            if chunk.last == 0x0A {
+                return String(data: data, encoding: .utf8)
+            }
+        }
+    }
+
+    private static func parse(_ text: String) throws -> CodexAccountData {
         var account: AccountIdentity?
         var windows: [RateLimitWindow] = []
         var usage: AccountTokenUsage?
         var errors: [String] = []
+        var accountResponseSeen = false
 
         for line in text.split(whereSeparator: { $0.isNewline }) {
             guard let object = JSONSupport.jsonObject(from: String(line)) else { continue }
@@ -101,6 +143,7 @@ struct CodexAppServerClient {
 
             switch id {
             case 1:
+                accountResponseSeen = true
                 if let accountObject = result["account"] as? [String: Any] {
                     account = AccountIdentity(
                         planType: JSONSupport.string(accountObject["planType"]),
@@ -108,9 +151,11 @@ struct CodexAppServerClient {
                     )
                 }
             case 2:
-                windows = parseRateLimits(result)
+                accountResponseSeen = true
+                windows = Self.parseRateLimits(result)
             case 3:
-                usage = parseUsage(result)
+                accountResponseSeen = true
+                usage = Self.parseUsage(result)
             default:
                 break
             }
@@ -119,29 +164,56 @@ struct CodexAppServerClient {
         if !errors.isEmpty && account == nil && windows.isEmpty && usage == nil {
             throw AppServerError.rpcError(errors.joined(separator: "; "))
         }
+        guard accountResponseSeen else { throw AppServerError.invalidResponse }
 
         return CodexAccountData(account: account, windows: windows, usage: usage)
     }
 
-    private func parseRateLimits(_ result: [String: Any]) -> [RateLimitWindow] {
-        let buckets = (result["rateLimitsByLimitId"] as? [String: Any])
-            ?? ["codex": result["rateLimits"] as Any]
+    static func parseRateLimits(_ result: [String: Any]) -> [RateLimitWindow] {
+        let buckets: [(String, [String: Any])] = {
+            if let byLimitID = result["rateLimitsByLimitId"] as? [String: Any], !byLimitID.isEmpty {
+                return byLimitID.compactMap { key, value in
+                    guard let bucket = value as? [String: Any] else { return nil }
+                    return (key, bucket)
+                }
+            }
 
-        return buckets.compactMap { key, value in
-            guard let object = value as? [String: Any] else { return nil }
-            let primary = object["primary"] as? [String: Any]
-            guard let primary else { return nil }
-            return RateLimitWindow(
-                id: key,
-                usedPercent: JSONSupport.double(primary["usedPercent"] ?? primary["used_percent"]) ?? 0,
-                windowMinutes: JSONSupport.int(primary["windowDurationMins"] ?? primary["window_minutes"]),
-                resetsAt: JSONSupport.dateFromUnixSeconds(primary["resetsAt"] ?? primary["resets_at"])
-            )
+            guard let direct = result["rateLimits"] as? [String: Any] else { return [] }
+            if direct["primary"] is [String: Any] || direct["secondary"] is [String: Any] {
+                return [("codex", direct)]
+            }
+            return direct.compactMap { key, value in
+                guard let bucket = value as? [String: Any] else { return nil }
+                return (key, bucket)
+            }
+        }()
+
+        var windows: [RateLimitWindow] = []
+        for (key, bucket) in buckets {
+            var parsed: [(String, RateLimitWindow)] = []
+            for role in ["primary", "secondary"] {
+                guard let window = bucket[role] as? [String: Any],
+                      let used = JSONSupport.double(window["usedPercent"] ?? window["used_percent"]) else {
+                    continue
+                }
+                parsed.append((role, RateLimitWindow(
+                    id: key,
+                    usedPercent: used,
+                    windowMinutes: JSONSupport.int(window["windowDurationMins"] ?? window["window_minutes"]),
+                    resetsAt: JSONSupport.dateFromUnixSeconds(window["resetsAt"] ?? window["resets_at"])
+                )))
+            }
+
+            let hasMultipleWindows = parsed.count > 1
+            for (role, var window) in parsed {
+                if hasMultipleWindows { window.id = "\(key).\(role)" }
+                windows.append(window)
+            }
         }
-        .sorted { $0.id < $1.id }
+        return windows.sorted { $0.id < $1.id }
     }
 
-    private func parseUsage(_ result: [String: Any]) -> AccountTokenUsage {
+    private static func parseUsage(_ result: [String: Any]) -> AccountTokenUsage {
         let summary = result["summary"] as? [String: Any]
         let isoFormatter = ISO8601DateFormatter()
         let dayFormatter = DateFormatter()
