@@ -1,4 +1,4 @@
-# AI Usage Dashboard
+# Agent Meter
 
 一个低资源、原生 macOS 菜单栏用量仪表盘，面向 Codex 和 Kimi Code。
 
@@ -7,6 +7,8 @@
 ## 当前能力
 
 - macOS 原生 SwiftUI `MenuBarExtra`，最低 macOS 13 Ventura。
+- 菜单栏弹窗使用顶部动态导航，可在“设置”中打开或关闭 Codex、Kimi Code；选中某个服务时只展示该服务卡片。
+- 服务显示设置会保存到本机，下次打开继续使用上次的导航配置。
 - Codex 账号额度：通过官方 `codex app-server` 查询 `account/rateLimits/read`。
 - 额度窗口完全按账号服务端返回的 `windowDurationMins` 显示；如果账号当前只返回 `10080` 分钟，就只显示“本周”，不会假定存在 5 小时窗口。
 - Codex 账号 Token 总量与每日 buckets：通过 `account/usage/read` 查询。

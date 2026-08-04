@@ -5,6 +5,7 @@ import Combine
 final class DashboardModel: ObservableObject {
     @Published private(set) var codex: ProviderSnapshot = .empty(.codex)
     @Published private(set) var kimi: ProviderSnapshot = .empty(.kimiCode)
+    @Published private(set) var navigation: ProviderNavigationState
     @Published private(set) var history: [DashboardSnapshot] = []
     @Published private(set) var isRefreshing = false
     @Published private(set) var lastRefresh: Date?
@@ -13,9 +14,47 @@ final class DashboardModel: ObservableObject {
     private let snapshotStore = SnapshotStore()
     private let codexCollector = CodexLogCollector()
     private let kimiCollector = KimiLogCollector()
+    private let preferences: UserDefaults
     private var watchers: [FileTreeWatcher] = []
     private var refreshTask: Task<Void, Never>?
     private var debounceTask: Task<Void, Never>?
+
+    init(preferences: UserDefaults = .standard) {
+        self.preferences = preferences
+        let enabled: Set<Provider>
+        if let values = preferences.array(forKey: "enabledProviders") as? [String] {
+            enabled = Set(values.compactMap(Provider.init(rawValue:)))
+        } else {
+            enabled = Set(Provider.allCases)
+        }
+        let selected = (preferences.string(forKey: "selectedProvider")).flatMap(Provider.init(rawValue:))
+        navigation = ProviderNavigationState(
+            enabledProviders: enabled,
+            selectedProvider: selected ?? .codex
+        )
+    }
+
+    func snapshot(for provider: Provider) -> ProviderSnapshot {
+        switch provider {
+        case .codex: return codex
+        case .kimiCode: return kimi
+        }
+    }
+
+    func selectProvider(_ provider: Provider) {
+        navigation.selectProvider(provider)
+        persistNavigation()
+    }
+
+    func setProviderEnabled(_ provider: Provider, enabled: Bool) {
+        navigation.setProviderEnabled(provider, enabled)
+        persistNavigation()
+    }
+
+    private func persistNavigation() {
+        preferences.set(navigation.enabledProviders.map(\.rawValue), forKey: "enabledProviders")
+        preferences.set(navigation.selectedProvider?.rawValue, forKey: "selectedProvider")
+    }
 
     func start() {
         if let persisted = snapshotStore.load() {
