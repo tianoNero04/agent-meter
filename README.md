@@ -7,6 +7,7 @@
 ## 当前能力
 
 - macOS 原生 SwiftUI `MenuBarExtra`，最低 macOS 13 Ventura。
+- App 图标源文件位于 `assets/image.png`；打包脚本会自动生成多尺寸 `AppIcon.icns` 并写入 App 包。
 - 菜单栏弹窗使用顶部动态导航，可在“设置”中打开或关闭 Codex、Kimi Code；选中某个服务时只展示该服务卡片。
 - 服务显示设置会保存到本机，下次打开继续使用上次的导航配置。
 - Codex 账号额度：通过官方 `codex app-server` 查询 `account/rateLimits/read`。
@@ -43,6 +44,8 @@ kimi
 ./Scripts/package-app.sh
 open Build/AgentUsageDashboard.app
 ```
+
+打包脚本会使用 macOS 原生 `sips` 和 `iconutil` 从 `assets/image.png` 生成 App 图标，不需要手动准备 `.icns` 文件。
 
 首版关闭 App Sandbox，因为需要在用户打开弹窗时启动本机已经安装的 `codex app-server`。App 只访问明确的 Codex/Kimi 数据路径，并在 README 中公开这些路径。
 
