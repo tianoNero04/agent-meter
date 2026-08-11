@@ -8,16 +8,36 @@ let package = Package(
         .macOS(.v13)
     ],
     products: [
-        .executable(name: "AgentUsageDashboard", targets: ["AgentUsageDashboard"])
+        .library(name: "AgentUsageDashboardKit", type: .dynamic, targets: ["AgentUsageDashboardKit"]),
+        .executable(name: "AgentUsageDashboard", targets: ["AgentUsageDashboardLauncher"])
     ],
     targets: [
+        .target(
+            name: "AgentUsageDashboardKit",
+            path: "Sources/AgentUsageDashboard",
+            sources: [
+                "App",
+                "Core",
+                "Data",
+                "Features",
+                "UI"
+            ],
+            resources: [
+                .copy("Resources/AgentMeterLogoWhite.png"),
+                .copy("Resources/NavBarBackground.png"),
+                .copy("Resources/CardStackBackground.png"),
+                .copy("Resources/ProviderIconCodex.png"),
+                .copy("Resources/ProviderIconKimi.png")
+            ]
+        ),
         .executableTarget(
-            name: "AgentUsageDashboard",
-            path: "Sources/AgentUsageDashboard"
+            name: "AgentUsageDashboardLauncher",
+            dependencies: ["AgentUsageDashboardKit"],
+            path: "Sources/AgentUsageDashboardLauncher"
         ),
         .testTarget(
             name: "AgentUsageDashboardTests",
-            dependencies: ["AgentUsageDashboard"],
+            dependencies: ["AgentUsageDashboardKit"],
             path: "Tests/AgentUsageDashboardTests"
         )
     ]

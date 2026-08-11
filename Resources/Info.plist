@@ -6,6 +6,8 @@
 	<string>AI Usage Dashboard</string>
 	<key>CFBundleExecutable</key>
 	<string>AgentUsageDashboard</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon.icns</string>
 	<key>CFBundleIdentifier</key>
 	<string>local.agent-usage-dashboard</string>
 	<key>CFBundleInfoDictionaryVersion</key>
