@@ -36,5 +36,11 @@ public struct AgentUsageDashboardApp: App {
             SettingsPlaceholderView()
         }
         .defaultSize(width: 460, height: 280)
+
+        // 注册完整菜单独立面板窗口（支持从弹窗右上角面板图标启动）
+        Window("完整菜单", id: "menu") {
+            FullMenuView(model: model)
+        }
+        .defaultSize(width: 480, height: 340)
     }
 }

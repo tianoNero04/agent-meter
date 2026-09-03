@@ -18,8 +18,8 @@ struct PopoverView: View {
             AppTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // 顶部杂志报头（Masthead）通栏
-                PopoverTopBar(model: model, selection: $selectedSection, openSettings: openWindow) { provider in
+                // 顶部杂志报头（Masthead）通栏（含品牌、选项卡与右上角面板图标）
+                PopoverTopBar(model: model, selection: $selectedSection, openWindow: openWindow) { provider in
                     selectProvider(provider)
                 }
 
@@ -87,24 +87,65 @@ struct PopoverView: View {
     }
 }
 
-/// 杂志报头（Masthead Top Bar）：左侧刊头品牌标示，右侧平铺瑞士选项卡
+/// 杂志报头（Masthead Top Bar）：左侧刊头品牌标示，右侧平铺瑞士选项卡，右上角面板图标启动完整菜单
 struct PopoverTopBar: View {
     @ObservedObject var model: DashboardModel
     @Binding var selection: PopoverSection
-    let openSettings: OpenWindowAction
+    let openWindow: OpenWindowAction
     let onSelect: (Provider) -> Void
 
     var body: some View {
         HStack(spacing: 0) {
             // 刊头品牌区
-            PopoverHeader(openSettings: openSettings)
+            PopoverHeader(openSettings: openWindow)
 
-            Spacer(minLength: 16)
+            Spacer(minLength: 10)
 
-            // 选项卡切换区
-            ProviderNavigationBar(model: model, selection: $selection, onSelect: onSelect)
+            // 选项卡切换区与完整菜单面板图标
+            HStack(spacing: 8) {
+                ProviderNavigationBar(model: model, selection: $selection, onSelect: onSelect)
+
+                // 极简 0.75pt 垂直微发丝分割线
+                Rectangle()
+                    .fill(AppTheme.hairline)
+                    .frame(width: 0.75, height: 16)
+
+                // 右上角面板图标：点击后启动完整菜单窗口
+                PanelMenuButton {
+                    NSApp.activate(ignoringOtherApps: true)
+                    openWindow(id: "menu")
+                }
+            }
         }
         .padding(.horizontal, 14)
         .frame(height: 42)
+    }
+}
+
+/// 右上角面板图标按钮：呈现严谨瑞士国际主义微圆角与悬停反馈，点击激活并启动完整菜单
+struct PanelMenuButton: View {
+    let openMenu: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: openMenu) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(isHovered ? AppTheme.surface : Color.clear)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(isHovered ? AppTheme.hairline.opacity(0.8) : AppTheme.hairline.opacity(0.4), lineWidth: 0.75)
+                    )
+
+                Image(systemName: "macwindow.on.rectangle")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(isHovered ? AppTheme.primaryText : AppTheme.secondaryText)
+            }
+            .frame(width: 24, height: 24)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .help("启动完整菜单 (Full Menu)")
     }
 }

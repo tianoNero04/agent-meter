@@ -88,7 +88,7 @@ private struct NavBarPreviewHost: View {
         PopoverTopBar(
             model: PreviewModels.dashboard(),
             selection: .constant(.provider(.codex)),
-            openSettings: openWindow,
+            openWindow: openWindow,
             onSelect: { _ in }
         )
         .frame(width: 366, height: 48.5)
