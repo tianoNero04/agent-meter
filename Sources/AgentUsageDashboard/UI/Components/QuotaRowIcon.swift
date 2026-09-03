@@ -20,7 +20,7 @@ struct QuotaRowIconRGB: Equatable {
     }
 }
 
-/// 额度行图标按 CardStackBackground 的实际显示比例缩放。
+/// 额度行图标视觉规范：按弹窗标准尺寸（366pt 宽度基准）等比缩放。
 struct QuotaRowIconSpec: Equatable {
     let kind: QuotaRowIconKind
 

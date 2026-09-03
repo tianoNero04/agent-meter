@@ -61,4 +61,26 @@ final class JSONSnapshotRepositoryTests: XCTestCase {
 
         XCTAssertNil(repository.load())
     }
+
+    func testLoadPrunesLocalDailyBucketsOutsideThirtyDayWindow() throws {
+        let (repository, directory) = try makeRepository()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let now = Date(timeIntervalSince1970: Date().timeIntervalSince1970.rounded(.down))
+        var snapshot = makeSnapshot(at: now)
+        snapshot.providers[0].localDailyBuckets = [
+            DailyTokenBucket(startDate: now.addingTimeInterval(-2 * 24 * 60 * 60), tokens: 10),
+            DailyTokenBucket(startDate: now.addingTimeInterval(-40 * 24 * 60 * 60), tokens: 20),
+            // 毫秒时间戳被当成秒解析产生的异常未来日期
+            DailyTokenBucket(startDate: now.addingTimeInterval(56_000 * 365 * 24 * 60 * 60), tokens: 30)
+        ]
+
+        repository.save(current: snapshot, history: [snapshot])
+
+        let loaded = repository.load()
+        XCTAssertEqual(loaded?.current.providers[0].localDailyBuckets, [
+            DailyTokenBucket(startDate: now.addingTimeInterval(-2 * 24 * 60 * 60), tokens: 10)
+        ])
+        XCTAssertEqual(loaded?.history.first?.providers[0].localDailyBuckets.count, 1)
+    }
 }

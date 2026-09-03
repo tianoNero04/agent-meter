@@ -24,8 +24,6 @@ let package = Package(
             ],
             resources: [
                 .copy("Resources/AgentMeterLogoWhite.png"),
-                .copy("Resources/NavBarBackground.png"),
-                .copy("Resources/CardStackBackground.png"),
                 .copy("Resources/ProviderIconCodex.png"),
                 .copy("Resources/ProviderIconKimi.png")
             ]

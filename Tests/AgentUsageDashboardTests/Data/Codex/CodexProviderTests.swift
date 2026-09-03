@@ -32,13 +32,14 @@ final class CodexProviderTests: XCTestCase {
 
         XCTAssertEqual(snapshot.status, .connected)
         XCTAssertEqual(snapshot.localTokenUsage.total, 20)
-        XCTAssertEqual(snapshot.windows.map(\.windowMinutes), [300])
+        // 额度窗口归账号通道（官方接口）所有，本地日志只负责 token 统计。
+        XCTAssertTrue(snapshot.windows.isEmpty)
         XCTAssertEqual(snapshot.source, "session-jsonl")
         XCTAssertNil(snapshot.account)
         XCTAssertNil(snapshot.errorMessage)
     }
 
-    func testAccountRefreshMergesAppServerDataWithLocalLogs() async throws {
+    func testAccountRefreshUsesOnlyAppServerWithoutParsingLocalLogs() async throws {
         let root = try makeFixtureRoot()
         defer { try? FileManager.default.removeItem(at: root) }
 
@@ -57,7 +58,9 @@ final class CodexProviderTests: XCTestCase {
         XCTAssertEqual(snapshot.account?.planType, "plus")
         XCTAssertEqual(snapshot.windows.map(\.windowMinutes), [10080])
         XCTAssertEqual(snapshot.accountUsage?.lifetimeTokens, 42)
-        XCTAssertEqual(snapshot.localTokenUsage.total, 20)
+        // 账号查询走官方接口，不解析本地日志：本机统计字段保持上一份的值。
+        XCTAssertEqual(snapshot.localTokenUsage, .zero)
+        XCTAssertTrue(snapshot.localModels.isEmpty)
         XCTAssertEqual(snapshot.source, "app-server + session-jsonl")
         XCTAssertNil(snapshot.errorMessage)
     }
@@ -87,10 +90,10 @@ final class CodexProviderTests: XCTestCase {
 
         XCTAssertEqual(snapshot.status, .connected)
         XCTAssertEqual(snapshot.account?.planType, "pro")
-        // 与旧 DashboardModel 一致：账号失败时本机日志里的额度窗口优先，上一份窗口只在本机没有时回退。
-        XCTAssertEqual(snapshot.windows.map(\.usedPercent), [25])
+        // 账号失败时保留上一份账号数据并显示错误，不解析本地日志制造额度窗口。
+        XCTAssertEqual(snapshot.windows.map(\.usedPercent), [60])
         XCTAssertEqual(snapshot.accountUsage?.lifetimeTokens, 100)
-        XCTAssertEqual(snapshot.localTokenUsage.total, 20)
+        XCTAssertEqual(snapshot.localTokenUsage, .zero)
         XCTAssertEqual(snapshot.source, "app-server + session-jsonl")
         XCTAssertNotNil(snapshot.errorMessage)
     }

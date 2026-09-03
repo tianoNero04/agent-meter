@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// 瑞士风格 Provider 网格导航栏组件：呈现清晰、高对比度的出版物选项卡
 struct ProviderNavigationBar: View {
     @ObservedObject var model: DashboardModel
     @Binding var selection: PopoverSection
@@ -7,7 +8,7 @@ struct ProviderNavigationBar: View {
     @Namespace private var tabNamespace
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             ForEach(model.navigation.visibleProviders, id: \.self) { provider in
                 NavigationTab(
                     title: provider.displayName.uppercased(),
@@ -17,17 +18,13 @@ struct ProviderNavigationBar: View {
                     onSelect(provider)
                 }
             }
-            Text("...")
-                .font(.system(size: 11, weight: .regular, design: .default))
-                .tracking(0.5)
-                .foregroundStyle(AppTheme.secondaryText.opacity(0.6))
-                .padding(.horizontal, 20)
-                .padding(.vertical, 9)
+            Spacer()
         }
-        .animation(.easeInOut(duration: 0.22), value: selection)
+        .animation(.easeInOut(duration: 0.20), value: selection)
     }
 }
 
+/// 瑞士网格单项标签
 struct NavigationTab: View {
     let title: String
     let isSelected: Bool
@@ -37,11 +34,11 @@ struct NavigationTab: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 11, weight: .regular, design: .default))
-                .tracking(0.5)
+                .font(.system(size: 10.5, weight: isSelected ? .bold : .medium, design: .default))
+                .tracking(0.6)
                 .foregroundStyle(isSelected ? AppTheme.primaryText : AppTheme.secondaryText)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 9)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5.5)
                 .background {
                     if isSelected {
                         SelectedTabChip()
@@ -53,30 +50,20 @@ struct NavigationTab: View {
     }
 }
 
-/// 选中态玻璃 chip：半透明填充 + 上亮下暗描边 + 底部蓝色发光下划线（白芯蓝晕，收在 chip 内底边上方）。
+/// 选中态瑞士指示框：硬朗微圆角 + 纯正深色垫底 + 底部高反差国际蓝基准标尺线
 struct SelectedTabChip: View {
     var body: some View {
-        RoundedRectangle(cornerRadius: 4.5, style: .continuous)
-            .fill(Color.white.opacity(0.07))
+        RoundedRectangle(cornerRadius: 4, style: .continuous)
+            .fill(AppTheme.elevated)
             .overlay(
-                RoundedRectangle(cornerRadius: 4.5, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [Color.white.opacity(0.42), Color.white.opacity(0.10)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        ),
-                        lineWidth: 1
-                    )
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .stroke(AppTheme.hairlineBright, lineWidth: 0.75)
             )
             .overlay(alignment: .bottom) {
-                Capsule()
-                    .fill(Color.white.opacity(0.95))
+                Rectangle()
+                    .fill(AppTheme.codex)
                     .frame(height: 2)
-                    .padding(.horizontal, 14)
-                    .shadow(color: AppTheme.codex.opacity(0.95), radius: 6)
-                    .shadow(color: AppTheme.codex.opacity(0.6), radius: 2)
-                    .offset(y: -1.5)
+                    .padding(.horizontal, 6)
             }
     }
 }

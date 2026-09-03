@@ -16,7 +16,7 @@ final class FileLineSequenceTests: XCTestCase {
         let url = try writeTempFile(content)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        var lines = FileLineSequence(url: url, chunkSize: 64).makeIterator()
+        let lines = FileLineSequence(url: url, chunkSize: 64).makeIterator()
         for index in 0..<200 {
             XCTAssertEqual(lines.next(), "\(index)-\(line)")
         }

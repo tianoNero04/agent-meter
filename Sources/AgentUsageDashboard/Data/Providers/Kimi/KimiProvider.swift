@@ -1,8 +1,8 @@
 import Foundation
 
-/// Kimi Code adapter：只提供本机会话采集。
-/// 官方账号额度接口尚未接入时，返回本机日志统计和明确的“账号额度待接入”状态，
-/// 不制造账号级百分比。
+/// Kimi Code adapter：只提供本机会话采集（本地通道）。
+/// 官方账号额度接口尚未接入，账号通道是 no-op：原样返回上一份快照，
+/// 不解析本地日志，也不制造账号级百分比。
 struct KimiProvider: UsageProviderAdapter {
     let provider: Provider = .kimiCode
 
@@ -16,6 +16,8 @@ struct KimiProvider: UsageProviderAdapter {
         previous: ProviderSnapshot,
         includeAccount: Bool
     ) async -> ProviderSnapshot {
+        guard !includeAccount else { return previous }
+
         let local = await Task.detached(priority: .utility) { [collector] in
             collector.collect()
         }.value

@@ -17,8 +17,13 @@ public struct AgentUsageDashboardApp: App {
         MenuBarExtra {
             PopoverView(model: model)
         } label: {
-            Image(systemName: "gauge")
-                .symbolRenderingMode(.hierarchical)
+            // 优先使用 App 的自适应 Logo 作为菜单栏常驻图标，缺失时回退到系统仪表盘图标
+            if let icon = BundleImages.menuBarIcon {
+                Image(nsImage: icon)
+            } else {
+                Image(systemName: "gauge")
+                    .symbolRenderingMode(.hierarchical)
+            }
         }
         .menuBarExtraStyle(.window)
 

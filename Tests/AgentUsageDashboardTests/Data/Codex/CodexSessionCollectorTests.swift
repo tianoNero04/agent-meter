@@ -78,4 +78,55 @@ final class CodexSessionCollectorTests: XCTestCase {
         XCTAssertEqual(collector.parsedFileCount, 3)
         XCTAssertEqual(updated.tokenUsage.total, 45)
     }
+
+    /// 验证仿照 cc-switch：当缺少 last_token_usage 时，从连续的 total_token_usage 累计值计算增量 delta
+    func testCodexCollectorCalculatesDeltaFromTotalTokenUsageWhenLastUsageMissing() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("codex-delta-\(UUID().uuidString)", isDirectory: true)
+        let sessions = root.appendingPathComponent(".codex/sessions", isDirectory: true)
+        try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let file = sessions.appendingPathComponent("session.jsonl")
+        let content = """
+        {"timestamp":"2026-08-01T10:00:00Z","type":"event_msg","payload":{"type":"turn_context","model":"gpt-5"}}
+        {"timestamp":"2026-08-01T10:00:01Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":100,"cached_input_tokens":50,"output_tokens":20}}}}
+        {"timestamp":"2026-08-01T10:00:05Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":150,"cached_input_tokens":70,"output_tokens":30}}}}
+        """
+        try content.write(to: file, atomically: true, encoding: .utf8)
+
+        let result = CodexSessionCollector(homeURL: root).collect()
+
+        // 第一次增量：input 100, cached 50, output 20
+        // 第二次增量：input 50, cached 20, output 10
+        // 总量：input 150, cached 70, output 30
+        XCTAssertEqual(result.tokenUsage.input, 150)
+        XCTAssertEqual(result.tokenUsage.cachedInput, 70)
+        XCTAssertEqual(result.tokenUsage.output, 30)
+        XCTAssertEqual(result.tokenUsage.total, 250)
+        XCTAssertEqual(result.dailyBuckets.count, 1)
+        XCTAssertEqual(result.dailyBuckets.first?.tokens, 250)
+    }
+
+    /// 验证缓存命中率计算与 cache_read_input_tokens 别名支持
+    func testCodexCollectorSupportsCacheReadAliasAndCalculatesHitRate() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("codex-cache-alias-\(UUID().uuidString)", isDirectory: true)
+        let sessions = root.appendingPathComponent(".codex/sessions", isDirectory: true)
+        try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let file = sessions.appendingPathComponent("alias.jsonl")
+        let content = """
+        {"type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":75,"cache_read_input_tokens":25,"output_tokens":10}}}}
+        """
+        try content.write(to: file, atomically: true, encoding: .utf8)
+
+        let result = CodexSessionCollector(homeURL: root).collect()
+        XCTAssertEqual(result.tokenUsage.input, 75)
+        XCTAssertEqual(result.tokenUsage.cachedInput, 25)
+        XCTAssertEqual(result.tokenUsage.output, 10)
+        // 缓存命中率: 25 / (75 + 25) = 25%
+        XCTAssertEqual(result.tokenUsage.cacheHitRate, 0.25, accuracy: 0.001)
+    }
 }

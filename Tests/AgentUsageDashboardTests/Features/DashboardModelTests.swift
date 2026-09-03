@@ -44,7 +44,11 @@ final class DashboardModelTests: XCTestCase {
     }
 
     private func waitForRefresh(_ model: DashboardModel) async {
-        for _ in 0..<200 where model.isRefreshing {
+        // 本地后台刷新不驱动 isRefreshing，以 lastRefresh 落定为准；
+        // start() 可能已从持久化状态恢复 lastRefresh，需等它变化。
+        let initial = model.lastRefresh
+        for _ in 0..<200 {
+            if !model.isRefreshing, let lastRefresh = model.lastRefresh, lastRefresh != initial { return }
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
     }
@@ -88,10 +92,52 @@ final class DashboardModelTests: XCTestCase {
         fixture.model.refresh(includeAccount: true)
         await waitForRefresh(fixture.model)
 
-        XCTAssertEqual(fixture.adapters.map(\.includeAccountValues), [[true], [true]])
+        // 账号刷新同时触发账号通道和本地通道，两条通道互不阻塞（调用顺序不定）。
+        XCTAssertEqual(fixture.adapters.map { $0.includeAccountValues.sorted { !$0 && $1 } }, [[false, true], [false, true]])
         XCTAssertEqual(fixture.model.codex.status, .connected)
         XCTAssertNotNil(fixture.model.lastRefresh)
         XCTAssertEqual(fixture.repository.savedSnapshots.count, 1)
+    }
+
+    func testAccountRefreshEndsSpinnerWithoutWaitingForLocalLogs() async throws {
+        let fixture = makeFixture()
+        // 本地日志解析慢（500ms），账号接口即刻返回：转圈只等账号通道。
+        fixture.adapters[0].delayNanoseconds = 500_000_000
+        fixture.adapters[0].delayOnlyForIncludeAccount = false
+
+        let start = Date()
+        fixture.model.refresh(includeAccount: true)
+        while fixture.model.isRefreshing, Date().timeIntervalSince(start) < 2 {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        XCTAssertFalse(fixture.model.isRefreshing)
+        XCTAssertLessThan(Date().timeIntervalSince(start), 0.4)
+    }
+
+    func testLocalRefreshResultDoesNotClobberFreshAccountData() async throws {
+        let fixture = makeFixture()
+        fixture.adapters[0].handler = { previous, includeAccount in
+            var snapshot = previous
+            if includeAccount {
+                snapshot.status = .connected
+                snapshot.account = AccountIdentity(planType: "plus", email: nil)
+                snapshot.windows = [RateLimitWindow(id: "codex", usedPercent: 31, windowMinutes: 10080, resetsAt: nil)]
+            } else {
+                snapshot.localTokenUsage = TokenUsage(input: 90, output: 9)
+            }
+            return snapshot
+        }
+        // 本地通道慢于账号通道收尾，后到结果不得覆盖先写入的账号数据。
+        fixture.adapters[0].delayNanoseconds = 300_000_000
+        fixture.adapters[0].delayOnlyForIncludeAccount = false
+
+        fixture.model.refresh(includeAccount: true)
+        try await Task.sleep(nanoseconds: 800_000_000)
+
+        XCTAssertEqual(fixture.model.codex.account?.planType, "plus")
+        XCTAssertEqual(fixture.model.codex.windows.map(\.windowMinutes), [10080])
+        XCTAssertEqual(fixture.model.codex.localTokenUsage.total, 99)
     }
 
     func testAdapterErrorMessageSurfacesAsLastError() async {
@@ -119,6 +165,18 @@ final class DashboardModelTests: XCTestCase {
         XCTAssertEqual(fixture.watchers.map(\.stopCount), [1, 1])
     }
 
+    func testRapidRefreshesRecordHistoryAtMostOncePerMinimumInterval() async {
+        let fixture = makeFixture()
+
+        fixture.model.refresh(includeAccount: false)
+        await waitForRefresh(fixture.model)
+        fixture.model.refresh(includeAccount: false)
+        await waitForRefresh(fixture.model)
+
+        XCTAssertEqual(fixture.repository.savedSnapshots.count, 1)
+        XCTAssertEqual(fixture.model.history.count, 1)
+    }
+
     func testNavigationChangesPersistThroughSettingsStore() {
         let fixture = makeFixture()
 
@@ -139,5 +197,38 @@ final class DashboardModelTests: XCTestCase {
 
         XCTAssertEqual(fixture.model.navigation.visibleProviders, [.kimiCode])
         XCTAssertEqual(fixture.model.navigation.selectedProvider, .kimiCode)
+    }
+
+    /// 验证打开面板查询逻辑：首次打开触发账号请求，30 秒内快速开合触发防刷冷却，force 强制绕过冷却
+    func testRefreshAccountOnPanelOpenAppliesCooldownAndForce() async {
+        let fixture = makeFixture()
+
+        // 1. 首次打开面板：发起账号查询
+        fixture.model.refreshAccountOnPanelOpen(force: false)
+        await waitForRefresh(fixture.model)
+        let codexAccountCount1 = fixture.adapters[0].includeAccountValues.filter { $0 }.count
+        XCTAssertEqual(codexAccountCount1, 1)
+
+        // 2. 处于 30 秒冷却时间内快速再次打开面板：不应发起账号网络请求（仅本地刷新）
+        fixture.model.refreshAccountOnPanelOpen(force: false)
+        await waitForRefresh(fixture.model)
+        let codexAccountCount2 = fixture.adapters[0].includeAccountValues.filter { $0 }.count
+        XCTAssertEqual(codexAccountCount2, 1, "冷却时间内不应发起新的账号请求")
+
+        // 3. 用户手动点击校准（force: true）：无视冷却，强制发起账号请求
+        fixture.model.refreshAccountOnPanelOpen(force: true)
+        await waitForRefresh(fixture.model)
+        let codexAccountCount3 = fixture.adapters[0].includeAccountValues.filter { $0 }.count
+        XCTAssertEqual(codexAccountCount3, 2, "force: true 时应强制发起账号请求")
+    }
+
+    /// 验证面板关闭时取消在途请求并将 isRefreshing 重置为 false
+    func testCancelAccountRefreshResetsRefreshingState() {
+        let fixture = makeFixture()
+        fixture.model.refresh(includeAccount: true)
+        XCTAssertTrue(fixture.model.isRefreshing)
+
+        fixture.model.cancelAccountRefresh()
+        XCTAssertFalse(fixture.model.isRefreshing)
     }
 }

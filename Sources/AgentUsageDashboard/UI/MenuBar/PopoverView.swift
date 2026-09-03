@@ -5,6 +5,7 @@ enum PopoverSection: Hashable {
     case provider(Provider)
 }
 
+/// 瑞士国际主义菜单栏弹窗主视图：390×425 pt 精确海报网格结构
 struct PopoverView: View {
     @ObservedObject var model: DashboardModel
     @Environment(\.openWindow) private var openWindow
@@ -13,16 +14,30 @@ struct PopoverView: View {
 
     var body: some View {
         ZStack {
-            SciFiBackdrop()
+            // 纯粹深墨黑底色（消退背景噪声）
+            AppTheme.background.ignoresSafeArea()
+
             VStack(spacing: 0) {
+                // 顶部杂志报头（Masthead）通栏
                 PopoverTopBar(model: model, selection: $selectedSection, openSettings: openWindow) { provider in
                     selectProvider(provider)
                 }
+
+                // 报头下方通栏 0.75pt 精确发丝基准线
+                Rectangle()
+                    .fill(AppTheme.hairline)
+                    .frame(height: 0.75)
+
+                // 下方三大结构化网格模块面板
+                ProviderPanel(
+                    snapshot: model.snapshot(for: selectedProvider),
+                    // 手动点击校准时无视冷却，强制发起远端查询
+                    refresh: { model.refreshAccountOnPanelOpen(force: true) },
+                    slideEdge: slideEdge
+                )
                 .padding(.horizontal, 12)
-                ProviderPanel(snapshot: model.snapshot(for: selectedProvider), refresh: { model.refresh() }, slideEdge: slideEdge)
-                    .padding(.horizontal, 12)
-                    .padding(.top, 17)
-                    .padding(.bottom, 15.5)
+                .padding(.top, 10)
+                .padding(.bottom, 17)
             }
         }
         .frame(width: 390, height: 425)
@@ -30,7 +45,12 @@ struct PopoverView: View {
         .onAppear {
             restoreSelection()
             normalizeSelection()
-            model.refresh()
+            // 严格“打开面板才查询，平时不查询”，带 30 秒防刷智能冷却
+            model.refreshAccountOnPanelOpen(force: false)
+        }
+        .onDisappear {
+            // 面板关闭时立即中断在途网络请求，彻底消除后台网络开销
+            model.cancelAccountRefresh()
         }
         .onChange(of: model.navigation.visibleProviders) { _ in normalizeSelection() }
     }
@@ -40,7 +60,7 @@ struct PopoverView: View {
         let oldIndex = order.firstIndex(of: selectedProvider) ?? 0
         let newIndex = order.firstIndex(of: provider) ?? 0
         slideEdge = newIndex >= oldIndex ? .trailing : .leading
-        withAnimation(.easeInOut(duration: 0.25)) {
+        withAnimation(.easeInOut(duration: 0.22)) {
             selectedSection = .provider(provider)
         }
         model.selectProvider(provider)
@@ -67,6 +87,7 @@ struct PopoverView: View {
     }
 }
 
+/// 杂志报头（Masthead Top Bar）：左侧刊头品牌标示，右侧平铺瑞士选项卡
 struct PopoverTopBar: View {
     @ObservedObject var model: DashboardModel
     @Binding var selection: PopoverSection
@@ -74,39 +95,16 @@ struct PopoverTopBar: View {
     let onSelect: (Provider) -> Void
 
     var body: some View {
-        ZStack {
-            if let background = BundleImages.navBarBackground {
-                Image(nsImage: background)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                Capsule(style: .continuous)
-                    .fill(Color.black.opacity(0.26))
-                    .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(0.20), lineWidth: 1))
-            }
-            HStack(spacing: 0) {
-                PopoverHeader(openSettings: openSettings)
-                    .padding(.leading, 14)
-                Spacer().frame(width: 16)
-                ProviderNavigationBar(model: model, selection: $selection, onSelect: onSelect)
-                Spacer()
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 48.5)
-    }
-}
+        HStack(spacing: 0) {
+            // 刊头品牌区
+            PopoverHeader(openSettings: openSettings)
 
-struct SciFiBackdrop: View {
-    var body: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 8 / 255, green: 14 / 255, blue: 24 / 255),
-                Color(red: 2 / 255, green: 5 / 255, blue: 12 / 255)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea()
+            Spacer(minLength: 16)
+
+            // 选项卡切换区
+            ProviderNavigationBar(model: model, selection: $selection, onSelect: onSelect)
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 42)
     }
 }

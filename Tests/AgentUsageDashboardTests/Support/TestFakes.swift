@@ -6,6 +6,8 @@ final class FakeUsageProviderAdapter: UsageProviderAdapter {
     private(set) var includeAccountValues: [Bool] = []
     private(set) var refreshCount = 0
     var delayNanoseconds: UInt64 = 0
+    /// 只在 includeAccount 等于该值时施加延迟，用于区分账号/本地两条通道的耗时。
+    var delayOnlyForIncludeAccount: Bool?
     var handler: (ProviderSnapshot, Bool) -> ProviderSnapshot
 
     init(
@@ -22,7 +24,8 @@ final class FakeUsageProviderAdapter: UsageProviderAdapter {
     ) async -> ProviderSnapshot {
         refreshCount += 1
         includeAccountValues.append(includeAccount)
-        if delayNanoseconds > 0 {
+        let shouldDelay = delayOnlyForIncludeAccount.map { $0 == includeAccount } ?? true
+        if delayNanoseconds > 0, shouldDelay {
             try? await Task.sleep(nanoseconds: delayNanoseconds)
         }
         return handler(previous, includeAccount)
