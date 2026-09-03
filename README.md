@@ -11,8 +11,8 @@
 - 视觉概念图归档在 `assets/references/agent-concept.png`；弹窗界面完全采用原生 SwiftUI 矢量布局与暗色材质绘制，不使用静态背景贴图。
 - 点击弹窗左上角 Logo 会打开独立的原生“设置”窗口；设置内容暂留占位，后续再接入服务开关。
 - 杂志风与国际主义设计（Swiss Style）：深墨黑 `#0A0C10`、网格表面 `#11151C`、`0.75pt` 发丝线与微型 20 格精密分段能量标尺。
-- Codex 账号额度：仿照 `cc-switch` 优先通过轻量级 HTTPS 直连接口（读取本地 Keychain 或 `~/.codex/auth.json` 凭据请求 `https://chatgpt.com/backend-api/wham/usage`，百毫秒级响应且无子进程开销）；未果时平滑降级至 `codex app-server`。
-- 打开面板才查询，平时不查询：带 30 秒智能防刷冷却，频繁打开自动复用内存快照避免 429；面板关闭立即中断在途请求，后台常驻期间绝无网络活动。
+- Codex / Kimi 账号额度：仿照 `cc-switch` 模式，优先通过轻量级 HTTPS 直连接口（读取本地 Keychain 或 `~/.codex/auth.json`、`~/.kimi-code/credentials/kimi-code.json` 凭据直接请求官方后端，支持静默自动刷新），百毫秒级响应且无子进程开销；Codex 直连未果时平滑降级至 `codex app-server`。
+- 打开面板才查询，平时不查询：带 30 秒智能防刷冷却，频繁打开自动复用内存快照避免限频；面板关闭立即中断在途请求，后台常驻期间绝无网络活动。
 - Codex/Kimi 用量统计对齐 `cc-switch`：精准解析会话日志中的 `last_token_usage` 与 `total_token_usage` 增量 delta，兼容 `cached_input_tokens` 与 `cache_read_input_tokens`，在面板中展示真实算力消耗、输入输出细分与缓存命中率（Cache Hit Rate），并按日聚合 7 天趋势分桶。
 - 5 小时额度显示相对重置时长，周额度显示具体重置时间；服务端没有返回的窗口不会被 UI 猜测补齐。
 - 本地日志变化时只增量更新本地 Token 统计；不轮询、不触发网络请求。
@@ -21,9 +21,7 @@
 
 ## 数据边界
 
-账号额度和账号 Token 总量是跨设备的服务器数据；本机模型排行只代表当前 Mac 的日志观测值。当前 Codex 账号接口没有返回按模型拆分的全账号 Token，因此 UI 会明确标记“本机观测”。
-
-Kimi Code 的官方 `/usage` 目前仍是交互式 CLI 命令；本版本先提供 Kimi 本机日志统计，并把账号额度显示为“平台适配器待接入”，不会抓取网页 Cookie 或要求粘贴凭证。后续可以增加 PTY 或官方非交互接口适配器。
+账号额度和账号 Token 总量是跨设备的服务器数据；本机模型排行只代表当前 Mac 的日志观测值。Codex 与 Kimi Code 均通过各自的轻量官方直连接口获取实时 5 小时与周额度，不制造虚假的账号级百分比。
 
 ## 使用
 

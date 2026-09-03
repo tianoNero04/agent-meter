@@ -45,7 +45,7 @@ UI 样式约定：所有 provider 共用同一套视觉样式，不随 provider 
 ## 性能要求
 
 - 无固定轮询：刷新严格由弹窗出现（带 30 秒智能防刷冷却，平时完全不发网络请求，弹窗关闭立即中断在途请求）、手动刷新和目录变化（1 秒防抖后的本地日志刷新，绝不触发网络）触发。
-- 账号通道与本地通道解耦：账号额度仿照 cc-switch 优先通过轻量级 HTTPS 直连接口（读取本地 Keychain 或 `~/.codex/auth.json` 凭据直接请求 `https://chatgpt.com/backend-api/wham/usage`，百毫秒级且免子进程开销）；直连失败或凭据未配置时降级至 `codex app-server` 兜底。
+- 账号通道与本地通道解耦：Codex 与 Kimi Code 额度均优先通过轻量级 HTTPS 直连接口（读取本地 Keychain 或 `~/.codex/auth.json`、`~/.kimi-code/credentials/kimi-code.json` 凭据直接请求官方后端，百毫秒级且免子进程开销）；Codex 直连失败或凭据未配置时降级至 `codex app-server` 兜底。
 - 本地日志统计对齐 cc-switch：同时支持 `last_token_usage` 与 `total_token_usage` 的 delta 增量计算，兼容 `cached_input_tokens` 与 `cache_read_input_tokens` 别名，并从本地日志聚合 7 日历史趋势分桶与计算缓存命中率（Cache Hit Rate）。
 - 日志采集在 utility 优先级后台执行，结果回主 actor 发布。
 - 采集器按文件做增量缓存（修改时间 + 文件大小为键），未变化的文件不重复解析；解析按行流式读取，并逐行释放 autorelease 对象，避免全量日志堆积内存。

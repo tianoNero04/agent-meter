@@ -17,6 +17,8 @@ final class KimiSessionCollector {
         var modelTotals: [String: TokenUsage] = [:]
     }
 
+    /// 会话根目录对应的 Home 目录
+    let homeURL: URL
     private let sessionsURL: URL
     private let lock = NSLock()
     private var cache: [String: CachedFile] = [:]
@@ -25,6 +27,7 @@ final class KimiSessionCollector {
     private(set) var parsedFileCount = 0
 
     init(homeURL: URL = FileManager.default.homeDirectoryForCurrentUser) {
+        self.homeURL = homeURL
         sessionsURL = homeURL.appendingPathComponent(".kimi-code/sessions", isDirectory: true)
     }
 

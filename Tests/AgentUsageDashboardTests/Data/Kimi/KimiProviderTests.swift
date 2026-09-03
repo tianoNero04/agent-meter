@@ -31,28 +31,34 @@ final class KimiProviderTests: XCTestCase {
         XCTAssertNil(snapshot.errorMessage)
     }
 
-    func testAccountRefreshIsNoOpWithoutAccountAPI() async throws {
+    /// 验证账号刷新失败（如凭据缺失）时保留上一份可用数据并透传错误信息
+    func testAccountRefreshFailureRetainsPreviousAccountDataAndReportsError() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("kimi-provider-noop-\(UUID().uuidString)", isDirectory: true)
         let sessions = root.appendingPathComponent(".kimi-code/sessions/example/agents/main", isDirectory: true)
         try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
 
-        let content = """
-        {"timestamp":"2026-08-04T09:00:00Z","modelAlias":"k3","usage":{"inputOther":10,"output":5}}
-        """
-        try content.write(
-            to: sessions.appendingPathComponent("wire.jsonl"),
-            atomically: true,
-            encoding: .utf8
-        )
-
         let provider = KimiProvider(collector: KimiSessionCollector(homeURL: root))
-        // 账号接口尚未接入：账号通道不解析本地日志，原样返回上一份快照。
-        let previous = ProviderSnapshot.empty(.kimiCode)
+        let previous = ProviderSnapshot(
+            provider: .kimiCode,
+            status: .connected,
+            account: AccountIdentity(planType: "INTERMEDIATE", email: "kimi-user"),
+            windows: [RateLimitWindow(id: "kimi.primary", usedPercent: 10, windowMinutes: 300, resetsAt: nil)],
+            accountUsage: nil,
+            localTokenUsage: .zero,
+            localDailyBuckets: [],
+            localModels: [],
+            source: "direct-api + wire-jsonl",
+            collectedAt: .distantPast,
+            errorMessage: nil
+        )
         let snapshot = await provider.refresh(previous: previous, includeAccount: true)
 
-        XCTAssertEqual(snapshot, previous)
+        XCTAssertEqual(snapshot.status, .connected)
+        XCTAssertEqual(snapshot.account?.planType, "INTERMEDIATE")
+        XCTAssertEqual(snapshot.windows.map(\.usedPercent), [10])
+        XCTAssertNotNil(snapshot.errorMessage)
     }
 
     func testLocalRefreshWithoutLogsReportsUnavailable() async throws {
