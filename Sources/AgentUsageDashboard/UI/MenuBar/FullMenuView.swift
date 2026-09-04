@@ -59,5 +59,13 @@ struct FullMenuView: View {
         }
         .frame(minWidth: 480, minHeight: 340)
         .preferredColorScheme(.dark)
+        .onAppear {
+            // 打开完整菜单窗口时动态保持 Dock 栏图标展示
+            DockPolicyManager.shared.windowDidAppear("menu")
+        }
+        .onDisappear {
+            // 关闭完整菜单窗口时通知管理器重新评估
+            DockPolicyManager.shared.windowDidDisappear("menu")
+        }
     }
 }
