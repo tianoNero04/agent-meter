@@ -1,40 +1,48 @@
 import SwiftUI
 
-/// 国际主义（Swiss Style）与杂志风核心主题系统
+/// 粗野主义（Neo-Brutalism）核心主题系统：象牙白背景、纯黑字体、高能量柠檬黄与克莱因蓝
 enum AppTheme {
-    // 瑞士深墨黑底色（纯正炭黑，消除光污染）
-    static let background = Color(red: 0.039, green: 0.047, blue: 0.063) // #0A0C10
-    // 工业网格模块底色（低饱和沉稳微蓝黑）
-    static let surface = Color(red: 0.067, green: 0.082, blue: 0.110)    // #11151C
-    // 次级抬升表面（用于标签、按压态）
-    static let elevated = Color(red: 0.098, green: 0.118, blue: 0.157)   // #191E28
+    // 象牙白底色（Warm Ivory，温润纸张感，消除视觉疲劳）
+    static let background = Color(red: 0.984, green: 0.976, blue: 0.957) // #FBF9F4
+    // 工业卡片纯白表面
+    static let surface = Color(red: 1.000, green: 1.000, blue: 1.000)    // #FFFFFF
+    // 次级抬升表面（象牙微灰）
+    static let elevated = Color(red: 0.949, green: 0.937, blue: 0.914)   // #F2EFE9
 
-    // 纯白高对比度文字
-    static let primaryText = Color(red: 0.973, green: 0.976, blue: 0.980)
-    // 冷银灰题注与技术参数
-    static let secondaryText = Color(red: 0.520, green: 0.570, blue: 0.640)
-    // 极淡辅助标注色
-    static let tertiaryText = Color(red: 0.360, green: 0.400, blue: 0.470)
+    // 核心主题色：高电压柠檬黄（Electric Lemon Yellow）
+    static let lemonYellow = Color(red: 0.980, green: 1.000, blue: 0.000) // #FAFF00
+    // 核心主题色：国际克莱因蓝（International Klein Blue - IKB）
+    static let kleinBlue = Color(red: 0.000, green: 0.184, blue: 0.655)   // #002FA7
 
-    // 0.5pt ~ 1pt 精确发丝线分割线
-    static let hairline = Color.white.opacity(0.10)
-    // 聚焦与高光发丝线
-    static let hairlineBright = Color.white.opacity(0.24)
+    // 纯黑高对比度字体
+    static let primaryText = Color(red: 0.000, green: 0.000, blue: 0.000) // #000000
+    // 深炭灰题注与技术参数
+    static let secondaryText = Color(red: 0.220, green: 0.220, blue: 0.220) // #383838
+    // 中性灰辅助说明
+    static let tertiaryText = Color(red: 0.450, green: 0.450, blue: 0.450)  // #737373
 
-    // 国际克莱因蓝（International Blue），全局统一强调色
-    static let codex = Color(red: 0.040, green: 0.470, blue: 1.000)      // #0A78FF
-    static let kimi = Color(red: 0.040, green: 0.470, blue: 1.000)       // 遵循所有 Provider 统一风格规范
-    // 正常在线状态（精密绿点）
-    static let success = Color(red: 0.000, green: 0.900, blue: 0.600)
-    // 警告/降级状态
-    static let warning = Color(red: 1.000, green: 0.600, blue: 0.150)
+    // 粗野主义实黑边框色
+    static let border = Color.black
+    // 细黑线分割线
+    static let hairline = Color.black.opacity(0.18)
+    // 醒目黑发丝线
+    static let hairlineBright = Color.black.opacity(0.40)
 
-    // 常用网格圆角（硬朗紧凑的工业小圆角）
-    static let gridCornerRadius: CGFloat = 6.0
+    // 全局统一强调色：克莱因蓝（遵循全 Provider 共用视觉系统规则）
+    static let codex = kleinBlue
+    static let kimi = kleinBlue
+
+    // 正常在线状态（精密墨绿）
+    static let success = Color(red: 0.000, green: 0.650, blue: 0.350)
+    // 警告/降级状态（粗野主义橙红）
+    static let warning = Color(red: 0.920, green: 0.350, blue: 0.050)
+
+    // 粗野主义紧凑硬朗微圆角
+    static let gridCornerRadius: CGFloat = 4.0
 }
 
 extension Provider {
     var iconName: String { self == .codex ? "terminal.fill" : "moon.stars.fill" }
-    // 统一遵循 AGENTS.md 约定：所有 Provider 共用固定蓝 AppTheme.codex
-    var accentColor: Color { AppTheme.codex }
+    // 统一遵循 AGENTS.md 约定：所有 Provider 共用克莱因蓝
+    var accentColor: Color { AppTheme.kleinBlue }
 }

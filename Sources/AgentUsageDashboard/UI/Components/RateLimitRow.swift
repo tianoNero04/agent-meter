@@ -13,42 +13,42 @@ struct RateLimitRow: View {
             // 窗口属性与题注
             VStack(alignment: .leading, spacing: 1.5) {
                 Text(window.label)
-                    .font(.system(size: 11, weight: .bold, design: .default))
+                    .font(.system(size: 11, weight: .black, design: .default))
                     .foregroundStyle(AppTheme.primaryText)
                 Text(windowSubtitle)
-                    .font(.system(size: 7, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 7, weight: .bold, design: .monospaced))
                     .tracking(0.6)
                     .foregroundStyle(AppTheme.secondaryText)
             }
             .frame(width: 60, alignment: .leading)
 
-            // 标志性视觉元素：瑞士高精度分段刻度能量标尺
+            // 标志性视觉元素：粗野主义克莱因蓝/柠檬黄分段刻度能量标尺
             SwissSegmentedGauge(remainingPercent: window.remainingPercent, accent: accent)
                 .frame(maxWidth: .infinity)
 
-            // 核心数值：大幅等宽百分比读数
+            // 核心数值：超粗等宽纯黑百分比读数
             Text("\(window.remainingPercent, specifier: "%.0f")%")
-                .font(.system(size: 17, weight: .bold, design: .monospaced))
+                .font(.system(size: 17, weight: .black, design: .monospaced))
                 .foregroundStyle(AppTheme.primaryText)
                 .frame(width: 48, alignment: .trailing)
 
-            // 竖向发丝分割线与右侧重置倒计时
+            // 竖向实线分割线与右侧重置倒计时
             if let resetsAt = window.resetsAt {
                 Rectangle()
-                    .fill(AppTheme.hairline)
-                    .frame(width: 0.75, height: 26)
+                    .fill(AppTheme.border.opacity(0.25))
+                    .frame(width: 1.0, height: 26)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text("RESETS")
-                        .font(.system(size: 6.5, weight: .bold, design: .monospaced))
+                        .font(.system(size: 6.5, weight: .black, design: .monospaced))
                         .tracking(0.5)
                         .foregroundStyle(AppTheme.secondaryText)
                     Text(resetDateText(from: resetsAt))
-                        .font(.system(size: 8, weight: .medium, design: .monospaced))
+                        .font(.system(size: 8, weight: .bold, design: .monospaced))
                         .foregroundStyle(AppTheme.primaryText)
                         .lineLimit(1)
                     Text(countdownText(to: resetsAt))
-                        .font(.system(size: 7.5, weight: .regular, design: .default))
+                        .font(.system(size: 7.5, weight: .semibold, design: .default))
                         .foregroundStyle(AppTheme.secondaryText)
                 }
                 .frame(width: 58, alignment: .leading)
@@ -80,10 +80,10 @@ struct RateLimitRow: View {
     }
 }
 
-/// 瑞士高精度分段刻度标尺（Signature Element）：将额度容量划分为 20 格微型精密量块
+/// 粗野主义高精度分段刻度标尺（Signature Element）：将额度容量划分为 20 格微型精密量块，采用克莱因蓝充盈与柠檬黄焦点
 struct SwissSegmentedGauge: View {
     let remainingPercent: Double
-    var accent: Color = AppTheme.codex
+    var accent: Color = AppTheme.kleinBlue
 
     private let totalSegments: Int = 20
 
@@ -101,14 +101,18 @@ struct SwissSegmentedGauge: View {
                     Rectangle()
                         .fill(
                             isFilled
-                                ? (isHead ? Color.white : accent)
-                                : Color.white.opacity(0.08)
+                                ? (isHead ? AppTheme.lemonYellow : accent)
+                                : Color(red: 0.910, green: 0.895, blue: 0.865) // 象牙浅灰槽底
                         )
-                        .frame(width: segmentWidth, height: 6.5)
+                        .overlay(
+                            Rectangle()
+                                .stroke(isFilled ? (isHead ? AppTheme.border : Color.clear) : Color.black.opacity(0.15), lineWidth: 0.5)
+                        )
+                        .frame(width: segmentWidth, height: 7.5)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(height: 6.5)
+        .frame(height: 7.5)
     }
 }

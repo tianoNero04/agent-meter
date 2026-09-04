@@ -93,7 +93,7 @@ private struct NavBarPreviewHost: View {
         )
         .frame(width: 366, height: 48.5)
         .padding()
-        .background(Color.black)
+        .background(AppTheme.background)
     }
 }
 

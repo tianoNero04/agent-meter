@@ -66,23 +66,24 @@ struct ProviderHeroCard: View {
 
                 Spacer()
 
-                // 工业风 Plan 架构标签
+                // 粗野主义 Plan 架构标签：高亮柠檬黄底色 + 1.25pt 纯黑边框 + 1.5pt 硬阴影
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("TIER // PLAN")
-                        .font(.system(size: 6.5, weight: .bold, design: .monospaced))
+                        .font(.system(size: 6.5, weight: .black, design: .monospaced))
                         .tracking(0.6)
                         .foregroundStyle(AppTheme.secondaryText)
                     Text(planLabel)
-                        .font(.system(size: 13, weight: .heavy, design: .monospaced))
+                        .font(.system(size: 13, weight: .black, design: .monospaced))
                         .tracking(0.5)
                         .foregroundStyle(AppTheme.primaryText)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3.5)
-                        .background(AppTheme.elevated, in: RoundedRectangle(cornerRadius: 3, style: .continuous))
+                        .background(AppTheme.lemonYellow, in: RoundedRectangle(cornerRadius: 3, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 3, style: .continuous)
-                                .stroke(AppTheme.hairlineBright, lineWidth: 0.75)
+                                .stroke(AppTheme.border, lineWidth: 1.25)
                         )
+                        .shadow(color: Color.black.opacity(0.85), radius: 0, x: 1.5, y: 1.5)
                 }
             }
         }
@@ -114,38 +115,39 @@ struct QuotaCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // 模块头部栏：索引号 + 刷新按钮
+            // 模块头部栏：索引号 + 粗野主义校准按键
             HStack(alignment: .center) {
                 HStack(spacing: 6) {
                     Text("[02 // RATE.LIMITS]")
-                        .font(.system(size: 7, weight: .bold, design: .monospaced))
+                        .font(.system(size: 7, weight: .black, design: .monospaced))
                         .tracking(0.8)
                         .foregroundStyle(AppTheme.secondaryText)
                     Text("CAPACITY REGISTER")
-                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .font(.system(size: 8, weight: .black, design: .monospaced))
                         .tracking(0.5)
                         .foregroundStyle(AppTheme.primaryText)
                 }
                 Spacer()
 
-                // 校准/刷新触发按钮
+                // 粗野主义校准触发按键：高亮柠檬黄底色 + 纯黑字 + 1.25pt 黑边与硬阴影
                 Button(action: refresh) {
                     HStack(spacing: 4) {
                         RefreshIconShape()
                             .fill(AppTheme.primaryText)
                             .frame(width: 8.5, height: 8.5)
                         Text("CALIBRATE")
-                            .font(.system(size: 7, weight: .bold, design: .monospaced))
+                            .font(.system(size: 7, weight: .black, design: .monospaced))
                             .tracking(0.5)
                             .foregroundStyle(AppTheme.primaryText)
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
-                    .background(AppTheme.elevated, in: RoundedRectangle(cornerRadius: 3, style: .continuous))
+                    .background(AppTheme.lemonYellow, in: RoundedRectangle(cornerRadius: 3, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 3, style: .continuous)
-                            .stroke(AppTheme.hairlineBright, lineWidth: 0.5)
+                            .stroke(AppTheme.border, lineWidth: 1.25)
                     )
+                    .shadow(color: Color.black.opacity(0.85), radius: 0, x: 1.5, y: 1.5)
                 }
                 .buttonStyle(PressBounceButtonStyle())
                 .help("刷新账号服务端额度数据 (Calibrate Quotas)")
@@ -153,10 +155,10 @@ struct QuotaCard: View {
             .padding(.horizontal, 12)
             .frame(height: 28)
 
-            // 发丝分隔线
+            // 纯黑实线分隔线
             Rectangle()
-                .fill(AppTheme.hairline)
-                .frame(height: 0.75)
+                .fill(AppTheme.border.opacity(0.20))
+                .frame(height: 1.0)
                 .padding(.horizontal, 12)
 
             // 额度行列表 / 空态
@@ -173,8 +175,8 @@ struct QuotaCard: View {
 
                         if window.id != snapshot.windows.last?.id {
                             Rectangle()
-                                .fill(AppTheme.hairline.opacity(0.6))
-                                .frame(height: 0.5)
+                                .fill(AppTheme.border.opacity(0.12))
+                                .frame(height: 0.75)
                                 .padding(.horizontal, 12)
                         }
                     }
@@ -225,22 +227,26 @@ struct TokenUsageCard: View {
                 // 左侧 Token 计数与细分指标（对齐 cc-switch 指标体系）
                 VStack(alignment: .leading, spacing: 2) {
                     Text(formatCompactNumber(totalTokens))
-                        .font(.system(size: 21, weight: .heavy, design: .monospaced))
+                        .font(.system(size: 21, weight: .black, design: .monospaced))
                         .foregroundStyle(AppTheme.primaryText)
                     Text("TOTAL COMPUTE")
-                        .font(.system(size: 6.5, weight: .bold, design: .monospaced))
+                        .font(.system(size: 6.5, weight: .black, design: .monospaced))
                         .tracking(0.6)
                         .foregroundStyle(AppTheme.secondaryText)
 
-                    // 细分指示：当有缓存命中时显示 Cache Hit Rate；否则显示输入输出细分
+                    // 细分指示：当有缓存命中时显示柠檬黄 Cache Hit Rate 徽标；否则显示输入输出细分
                     if snapshot.localTokenUsage.cachedInput > 0 {
                         HStack(spacing: 3) {
                             Text("CACHE")
-                                .font(.system(size: 6.5, weight: .semibold, design: .monospaced))
+                                .font(.system(size: 6.5, weight: .bold, design: .monospaced))
                                 .foregroundStyle(AppTheme.secondaryText)
                             Text("\(Int(round(snapshot.localTokenUsage.cacheHitRate * 100)))% HIT")
-                                .font(.system(size: 6.5, weight: .bold, design: .monospaced))
-                                .foregroundStyle(AppTheme.codex)
+                                .font(.system(size: 6.5, weight: .black, design: .monospaced))
+                                .foregroundStyle(AppTheme.primaryText)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(AppTheme.lemonYellow, in: RoundedRectangle(cornerRadius: 2))
+                                .overlay(RoundedRectangle(cornerRadius: 2).stroke(AppTheme.border, lineWidth: 0.75))
                         }
                     } else if snapshot.localTokenUsage.input > 0 || snapshot.localTokenUsage.output > 0 {
                         HStack(spacing: 3) {
@@ -248,26 +254,26 @@ struct TokenUsageCard: View {
                             Text("·")
                             Text("OUT \(formatCompactNumber(snapshot.localTokenUsage.output))")
                         }
-                        .font(.system(size: 6.5, weight: .medium, design: .monospaced))
+                        .font(.system(size: 6.5, weight: .bold, design: .monospaced))
                         .foregroundStyle(AppTheme.secondaryText)
                         .lineLimit(1)
                     }
                 }
                 .frame(width: 104, alignment: .leading)
 
-                // 竖向发丝分割
+                // 粗野主义 1.0pt 实黑分割线
                 Rectangle()
-                    .fill(AppTheme.hairline)
-                    .frame(width: 0.75, height: 44)
+                    .fill(AppTheme.border.opacity(0.20))
+                    .frame(width: 1.0, height: 44)
 
-                // 右侧 7 天趋势网格图表
+                // 右侧 7 天趋势克莱因蓝图表
                 if buckets.isEmpty {
                     VStack(spacing: 3) {
                         Image(systemName: "chart.xyaxis.line")
                             .font(.system(size: 14, weight: .regular))
                             .foregroundStyle(AppTheme.tertiaryText)
                         Text("[NO DATA POINTS IN RANGE]")
-                            .font(.system(size: 7, weight: .medium, design: .monospaced))
+                            .font(.system(size: 7, weight: .bold, design: .monospaced))
                             .foregroundStyle(AppTheme.tertiaryText)
                     }
                     .frame(maxWidth: .infinity)
@@ -275,13 +281,13 @@ struct TokenUsageCard: View {
                 } else {
                     Chart(buckets) { bucket in
                         AreaMark(x: .value("DATE", bucket.startDate, unit: .day), y: .value("TOKENS", bucket.tokens))
-                            .foregroundStyle(LinearGradient(colors: [AppTheme.codex.opacity(0.32), .clear], startPoint: .top, endPoint: .bottom))
+                            .foregroundStyle(LinearGradient(colors: [AppTheme.kleinBlue.opacity(0.25), AppTheme.lemonYellow.opacity(0.08), .clear], startPoint: .top, endPoint: .bottom))
                         LineMark(x: .value("DATE", bucket.startDate, unit: .day), y: .value("TOKENS", bucket.tokens))
-                            .foregroundStyle(AppTheme.codex)
-                            .lineStyle(StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
+                            .foregroundStyle(AppTheme.kleinBlue)
+                            .lineStyle(StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
                         PointMark(x: .value("DATE", bucket.startDate, unit: .day), y: .value("TOKENS", bucket.tokens))
                             .foregroundStyle(AppTheme.primaryText)
-                            .symbolSize(18)
+                            .symbolSize(22)
                     }
                     .chartXAxis(.hidden)
                     .chartYAxis(.hidden)
@@ -297,7 +303,7 @@ struct TokenUsageCard: View {
     }
 }
 
-/// 额度空态指示：极简瑞士结构化未连接占位
+/// 额度空态指示：粗野主义黑白结构化未连接占位
 struct QuotaEmptyState: View {
     let provider: Provider
 
@@ -306,24 +312,24 @@ struct QuotaEmptyState: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("ACCOUNT QUOTA")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
                         .foregroundStyle(AppTheme.primaryText)
                     Text(provider == .kimiCode ? "CLI ONLY // LOCAL MODE" : "UNRESOLVED // READY")
-                        .font(.system(size: 7, weight: .medium, design: .monospaced))
+                        .font(.system(size: 7, weight: .bold, design: .monospaced))
                         .foregroundStyle(AppTheme.secondaryText)
                 }
                 Spacer()
                 Text("--")
-                    .font(.system(size: 20, weight: .bold, design: .monospaced))
+                    .font(.system(size: 20, weight: .black, design: .monospaced))
                     .foregroundStyle(AppTheme.secondaryText)
             }
 
             Rectangle()
-                .fill(Color.white.opacity(0.08))
+                .fill(Color.black.opacity(0.12))
                 .frame(height: 4)
 
             Text(provider == .kimiCode ? "Kimi CLI 适配器待接入，当前仅记录本地日志算力。" : "刷新时从 Codex App Server 提取配额，当前尚未获取。")
-                .font(.system(size: 7.5, design: .monospaced))
+                .font(.system(size: 7.5, weight: .bold, design: .monospaced))
                 .foregroundStyle(AppTheme.secondaryText)
                 .lineLimit(1)
         }
