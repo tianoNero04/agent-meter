@@ -6,7 +6,7 @@ struct FullMenuView: View {
 
     var body: some View {
         ZStack {
-            // 象牙白温润底色
+            // 深墨黑背景
             AppTheme.background.ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 14) {
@@ -15,10 +15,10 @@ struct FullMenuView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "macwindow.on.rectangle")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(AppTheme.kleinBlue)
+                            .foregroundStyle(AppTheme.codex)
 
                         Text("[MENU // FULL.PANEL]")
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .font(.system(size: 10, weight: .heavy, design: .monospaced))
                             .tracking(1.0)
                             .foregroundStyle(AppTheme.primaryText)
                     }
@@ -26,28 +26,28 @@ struct FullMenuView: View {
                     Spacer()
 
                     Text("FRAME ONLY // CONTENT RESERVED")
-                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .font(.system(size: 8, weight: .medium, design: .monospaced))
                         .tracking(0.6)
                         .foregroundStyle(AppTheme.tertiaryText)
                 }
 
-                // 核心预留线框区域（具备 4pt 紧凑微圆角、1.25pt 纯黑边框与 2pt 硬阴影）
+                // 核心预留线框区域（具备 6pt 微圆角、发丝边框与网格背景）
                 VStack(spacing: 12) {
                     Spacer()
 
                     Image(systemName: "square.dashed")
-                        .font(.system(size: 36, weight: .ultraLight))
-                        .foregroundStyle(AppTheme.kleinBlue.opacity(0.8))
+                        .font(.system(size: 32, weight: .ultraLight))
+                        .foregroundStyle(AppTheme.tertiaryText)
 
                     VStack(spacing: 4) {
                         Text("[MENU.CONTAINER.FRAME]")
-                            .font(.system(size: 11, weight: .black, design: .monospaced))
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
                             .tracking(1.2)
-                            .foregroundStyle(AppTheme.primaryText)
-
-                        Text("预留粗野主义菜单线框结构 · 内容待接入")
-                            .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(AppTheme.secondaryText)
+
+                        Text("预留菜单线框结构 · 内容待接入")
+                            .font(.system(size: 9, weight: .regular))
+                            .foregroundStyle(AppTheme.tertiaryText)
                     }
 
                     Spacer()
@@ -58,6 +58,6 @@ struct FullMenuView: View {
             .padding(18)
         }
         .frame(minWidth: 480, minHeight: 340)
-        .preferredColorScheme(.light)
+        .preferredColorScheme(.dark)
     }
 }

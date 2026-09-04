@@ -24,7 +24,7 @@ struct ProviderNavigationBar: View {
     }
 }
 
-/// 粗野主义网格单项标签：高电压柠檬黄激活底色与纯黑硬边框
+/// 瑞士网格单项标签
 struct NavigationTab: View {
     let title: String
     let isSelected: Bool
@@ -34,22 +34,15 @@ struct NavigationTab: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 10, weight: isSelected ? .black : .bold, design: .monospaced))
+                .font(.system(size: 10.5, weight: isSelected ? .bold : .medium, design: .default))
                 .tracking(0.6)
-                .foregroundStyle(AppTheme.primaryText)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4.5)
+                .foregroundStyle(isSelected ? AppTheme.primaryText : AppTheme.secondaryText)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5.5)
                 .background {
                     if isSelected {
                         SelectedTabChip()
                             .matchedGeometryEffect(id: "selectedTab", in: namespace)
-                    } else {
-                        RoundedRectangle(cornerRadius: 3, style: .continuous)
-                            .fill(AppTheme.surface)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                                    .stroke(AppTheme.border.opacity(0.35), lineWidth: 1.0)
-                            )
                     }
                 }
         }
@@ -57,15 +50,20 @@ struct NavigationTab: View {
     }
 }
 
-/// 选中态粗野主义指示框：高亮柠檬黄底色 + 1.25pt 纯黑边框 + 1.5pt 硬阴影
+/// 选中态瑞士指示框：硬朗微圆角 + 纯正深色垫底 + 底部高反差国际蓝基准标尺线
 struct SelectedTabChip: View {
     var body: some View {
-        RoundedRectangle(cornerRadius: 3, style: .continuous)
-            .fill(AppTheme.lemonYellow)
+        RoundedRectangle(cornerRadius: 4, style: .continuous)
+            .fill(AppTheme.elevated)
             .overlay(
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .stroke(AppTheme.border, lineWidth: 1.25)
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .stroke(AppTheme.hairlineBright, lineWidth: 0.75)
             )
-            .shadow(color: Color.black.opacity(0.85), radius: 0, x: 1.5, y: 1.5)
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(AppTheme.codex)
+                    .frame(height: 2)
+                    .padding(.horizontal, 6)
+            }
     }
 }

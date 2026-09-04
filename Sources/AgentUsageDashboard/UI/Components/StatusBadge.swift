@@ -19,10 +19,10 @@ struct StatusBadge: View {
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 2.5)
-        .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 3, style: .continuous))
+        .background(AppTheme.elevated, in: RoundedRectangle(cornerRadius: 3, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .stroke(AppTheme.border, lineWidth: 1.0)
+                .stroke(AppTheme.hairline, lineWidth: 0.5)
         )
     }
 

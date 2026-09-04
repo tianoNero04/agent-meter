@@ -14,7 +14,7 @@ struct PopoverView: View {
 
     var body: some View {
         ZStack {
-            // 象牙白温润底色（温和纸质质感）
+            // 纯粹深墨黑底色（消退背景噪声）
             AppTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -23,10 +23,10 @@ struct PopoverView: View {
                     selectProvider(provider)
                 }
 
-                // 报头下方通栏 1.25pt 纯黑基准线（粗野主义核心结构线）
+                // 报头下方通栏 0.75pt 精确发丝基准线
                 Rectangle()
-                    .fill(AppTheme.border)
-                    .frame(height: 1.25)
+                    .fill(AppTheme.hairline)
+                    .frame(height: 0.75)
 
                 // 下方三大结构化网格模块面板
                 ProviderPanel(
@@ -41,7 +41,7 @@ struct PopoverView: View {
             }
         }
         .frame(width: 390, height: 425)
-        .preferredColorScheme(.light)
+        .preferredColorScheme(.dark)
         .onAppear {
             restoreSelection()
             normalizeSelection()
@@ -105,10 +105,10 @@ struct PopoverTopBar: View {
             HStack(spacing: 8) {
                 ProviderNavigationBar(model: model, selection: $selection, onSelect: onSelect)
 
-                // 粗野主义 1.25pt 纯黑垂直分割线
+                // 极简 0.75pt 垂直微发丝分割线
                 Rectangle()
-                    .fill(AppTheme.border)
-                    .frame(width: 1.25, height: 16)
+                    .fill(AppTheme.hairline)
+                    .frame(width: 0.75, height: 16)
 
                 // 右上角面板图标：点击后启动完整菜单窗口
                 PanelMenuButton {
@@ -122,7 +122,7 @@ struct PopoverTopBar: View {
     }
 }
 
-/// 右上角面板图标按钮：粗野主义 1.25pt 纯黑边框、柠檬黄悬停高光与硬阴影
+/// 右上角面板图标按钮：呈现严谨瑞士国际主义微圆角与悬停反馈，点击激活并启动完整菜单
 struct PanelMenuButton: View {
     let openMenu: () -> Void
     @State private var isHovered = false
@@ -130,17 +130,16 @@ struct PanelMenuButton: View {
     var body: some View {
         Button(action: openMenu) {
             ZStack {
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(isHovered ? AppTheme.lemonYellow : AppTheme.surface)
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(isHovered ? AppTheme.surface : Color.clear)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 3)
-                            .stroke(AppTheme.border, lineWidth: 1.25)
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(isHovered ? AppTheme.hairline.opacity(0.8) : AppTheme.hairline.opacity(0.4), lineWidth: 0.75)
                     )
-                    .shadow(color: Color.black.opacity(isHovered ? 0.9 : 0.4), radius: 0, x: isHovered ? 1.5 : 1, y: isHovered ? 1.5 : 1)
 
                 Image(systemName: "macwindow.on.rectangle")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(AppTheme.primaryText)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(isHovered ? AppTheme.primaryText : AppTheme.secondaryText)
             }
             .frame(width: 24, height: 24)
             .contentShape(Rectangle())

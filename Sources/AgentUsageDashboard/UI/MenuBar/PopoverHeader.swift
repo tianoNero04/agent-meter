@@ -12,27 +12,21 @@ struct PopoverHeader: View {
                     .frame(width: 18, height: 18)
 
                 VStack(alignment: .leading, spacing: 0) {
-                    // 粗野主义超粗黑体报头
+                    // 报头重字重大写标
                     HStack(spacing: 3) {
                         Text("AGENT")
-                            .font(.system(size: 10, weight: .black, design: .default))
+                            .font(.system(size: 10, weight: .heavy, design: .default))
                         Text("METER")
-                            .font(.system(size: 10, weight: .black, design: .default))
+                            .font(.system(size: 10, weight: .heavy, design: .default))
                     }
                     .tracking(1.2)
                     .foregroundStyle(AppTheme.primaryText)
 
-                    // 杂志期号与克莱因蓝系统就绪指示
-                    HStack(spacing: 3) {
-                        Text("VOL.26 //")
-                            .font(.system(size: 6.5, weight: .bold, design: .monospaced))
-                            .tracking(0.8)
-                            .foregroundStyle(AppTheme.secondaryText)
-                        Text("SYS.OK")
-                            .font(.system(size: 6.5, weight: .black, design: .monospaced))
-                            .tracking(0.8)
-                            .foregroundStyle(AppTheme.kleinBlue)
-                    }
+                    // 杂志期号与系统就绪指示
+                    Text("VOL.26 // SYS.OK")
+                        .font(.system(size: 6.5, weight: .medium, design: .monospaced))
+                        .tracking(0.8)
+                        .foregroundStyle(AppTheme.secondaryText)
                 }
             }
             .contentShape(Rectangle())
@@ -42,20 +36,15 @@ struct PopoverHeader: View {
     }
 }
 
-/// 自适应粗野主义黑色几何 Logo（采用模板模式渲染为深邃纯黑）
 struct AgentMeterLogo: View {
     var body: some View {
         Group {
             if let logo = BundleImages.logoWhite {
                 Image(nsImage: logo)
                     .resizable()
-                    .renderingMode(.template)
-                    .foregroundStyle(AppTheme.primaryText)
             } else {
                 Image("AgentMeterLogoWhite", bundle: .module)
                     .resizable()
-                    .renderingMode(.template)
-                    .foregroundStyle(AppTheme.primaryText)
             }
         }
         .scaledToFit()
