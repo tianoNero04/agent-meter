@@ -29,65 +29,70 @@ private final class FakeActivationPolicyApplier: ActivationPolicyApplying {
 
 @MainActor
 final class DockPolicyManagerTests: XCTestCase {
-    func testPopoverAppearSwitchesToRegularAndActivates() {
+    func testInitialStateRemainsAccessoryWithoutWindows() {
         let fake = FakeActivationPolicyApplier()
         let manager = DockPolicyManager(applier: fake, debounceNanoseconds: 0)
 
+        // 初始状态下应用处于 accessory 附属模式，不展示 Dock 栏图标
         XCTAssertEqual(fake.policy, .accessory)
-        XCTAssertFalse(manager.isPopoverVisible)
-
-        // 模拟打开菜单弹窗
-        manager.popoverDidAppear()
-
-        XCTAssertTrue(manager.isPopoverVisible)
-        XCTAssertEqual(fake.policy, .regular)
-        XCTAssertEqual(fake.activateCallCount, 1)
+        XCTAssertTrue(manager.activeWindows.isEmpty)
     }
 
-    func testPopoverDisappearRevertsToAccessoryWhenNoWindowsOpen() async {
+    func testWindowWillOpenAndDidAppearSwitchesToRegularAndActivates() {
         let fake = FakeActivationPolicyApplier()
-        let manager = DockPolicyManager(applier: fake, debounceNanoseconds: 10_000_000)
+        let manager = DockPolicyManager(applier: fake, debounceNanoseconds: 0)
 
-        manager.popoverDidAppear()
-        XCTAssertEqual(fake.policy, .regular)
-
-        // 模拟收起菜单弹窗
-        manager.popoverDidDisappear()
-        XCTAssertFalse(manager.isPopoverVisible)
-
-        // 等待防抖触发
-        try? await Task.sleep(nanoseconds: 25_000_000)
-
-        XCTAssertEqual(fake.policy, .accessory)
-    }
-
-    func testWindowWillOpenAndDidAppearKeepsRegularPolicy() async {
-        let fake = FakeActivationPolicyApplier()
-        let manager = DockPolicyManager(applier: fake, debounceNanoseconds: 10_000_000)
-
-        manager.popoverDidAppear()
-
-        // 模拟点击面板按钮，预先锁定完整菜单窗口开启
+        // 模拟用户点击右上角面板/设置按钮打开独立窗口
         manager.windowWillOpen("menu")
+
         XCTAssertTrue(manager.activeWindows.contains("menu"))
         XCTAssertEqual(fake.policy, .regular)
+        XCTAssertEqual(fake.activateCallCount, 1)
 
-        // 弹窗关闭，但完整菜单窗口仍在开启中
-        manager.popoverDidDisappear()
+        // 窗口展示完成
         manager.windowDidAppear("menu")
+        XCTAssertEqual(fake.policy, .regular)
+    }
 
-        try? await Task.sleep(nanoseconds: 25_000_000)
+    func testWindowCloseRevertsToAccessoryAfterDebounce() async {
+        let fake = FakeActivationPolicyApplier()
+        let manager = DockPolicyManager(applier: fake, debounceNanoseconds: 10_000_000)
 
-        // 依然应保持 regular 模式，Dock 图标不闪烁
+        manager.windowWillOpen("menu")
+        manager.windowDidAppear("menu")
         XCTAssertEqual(fake.policy, .regular)
 
-        // 模拟关闭完整菜单窗口
+        // 模拟关闭窗口
         manager.windowDidDisappear("menu")
         XCTAssertFalse(manager.activeWindows.contains("menu"))
 
+        // 等待防抖结束
         try? await Task.sleep(nanoseconds: 25_000_000)
 
-        // 所有窗口已关闭，恢复为 accessory 模式
+        // 所有窗口已关闭，平滑恢复为 accessory 模式
+        XCTAssertEqual(fake.policy, .accessory)
+    }
+
+    func testMultipleWindowsMaintainRegularUntilAllClosed() async {
+        let fake = FakeActivationPolicyApplier()
+        let manager = DockPolicyManager(applier: fake, debounceNanoseconds: 10_000_000)
+
+        manager.windowDidAppear("menu")
+        manager.windowDidAppear("settings")
+        XCTAssertEqual(fake.policy, .regular)
+
+        // 关闭其中一个窗口
+        manager.windowDidDisappear("menu")
+        try? await Task.sleep(nanoseconds: 25_000_000)
+
+        // 仍有 settings 窗口开启，保持 regular
+        XCTAssertEqual(fake.policy, .regular)
+
+        // 关闭最后一个窗口
+        manager.windowDidDisappear("settings")
+        try? await Task.sleep(nanoseconds: 25_000_000)
+
+        // 全部关闭后恢复为 accessory
         XCTAssertEqual(fake.policy, .accessory)
     }
 
@@ -96,12 +101,12 @@ final class DockPolicyManagerTests: XCTestCase {
         fake.hasVisibleWindow = true
         let manager = DockPolicyManager(applier: fake, debounceNanoseconds: 10_000_000)
 
-        manager.popoverDidAppear()
-        manager.popoverDidDisappear()
+        manager.windowDidAppear("menu")
+        manager.windowDidDisappear("menu")
 
         try? await Task.sleep(nanoseconds: 25_000_000)
 
-        // 由于系统底层检测到仍有可见普通窗口，保持 regular
+        // 由于系统底层仍存在可见普通窗口，保持 regular
         XCTAssertEqual(fake.policy, .regular)
     }
 }

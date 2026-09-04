@@ -43,16 +43,12 @@ struct PopoverView: View {
         .frame(width: 390, height: 425)
         .preferredColorScheme(.dark)
         .onAppear {
-            // 打开弹窗菜单时动态唤起 Dock 栏图标并激活应用
-            DockPolicyManager.shared.popoverDidAppear()
             restoreSelection()
             normalizeSelection()
             // 严格“打开面板才查询，平时不查询”，带 30 秒防刷智能冷却
             model.refreshAccountOnPanelOpen(force: false)
         }
         .onDisappear {
-            // 菜单弹窗收起时通知管理器进行防抖恢复
-            DockPolicyManager.shared.popoverDidDisappear()
             // 面板关闭时立即中断在途网络请求，彻底消除后台网络开销
             model.cancelAccountRefresh()
         }
