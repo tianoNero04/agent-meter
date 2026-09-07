@@ -68,6 +68,9 @@ struct ModelPricingTab: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(isCheckingUpdates)
+
+                    // 右上角日夜模式切换图标
+                    ThemeToggleButton()
                 }
 
                 if let updateMessage {

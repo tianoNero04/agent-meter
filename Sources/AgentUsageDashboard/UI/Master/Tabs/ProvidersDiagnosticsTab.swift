@@ -68,6 +68,9 @@ struct ProvidersDiagnosticsTab: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(isTesting)
+
+                    // 右上角日夜模式切换图标
+                    ThemeToggleButton()
                 }
 
                 // 服务商卡片列表

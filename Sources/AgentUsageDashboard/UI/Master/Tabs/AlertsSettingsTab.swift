@@ -33,6 +33,9 @@ struct AlertsSettingsTab: View {
                 }
 
                 Spacer()
+
+                // 右上角日夜模式切换图标
+                ThemeToggleButton()
             }
 
             // 核心功能卡片 1：“满血复活”重置闹钟

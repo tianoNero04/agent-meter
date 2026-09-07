@@ -34,6 +34,9 @@ struct PromptSavingsTab: View {
                     }
 
                     Spacer()
+
+                    // 右上角日夜模式切换图标
+                    ThemeToggleButton()
                 }
 
                 // 核心省钱高亮看板
