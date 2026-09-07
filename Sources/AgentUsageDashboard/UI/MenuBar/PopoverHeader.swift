@@ -5,7 +5,12 @@ struct PopoverHeader: View {
     let openSettings: OpenWindowAction
 
     var body: some View {
-        Button { openSettings(id: "settings") } label: {
+        Button {
+            // 点击 Logo 启动统一控制中心总窗口
+            DockPolicyManager.shared.windowWillOpen("master")
+            NSApp.activate(ignoringOtherApps: true)
+            openSettings(id: "master")
+        } label: {
             HStack(spacing: 8) {
                 // 极简白色几何 Logo
                 AgentMeterLogo()

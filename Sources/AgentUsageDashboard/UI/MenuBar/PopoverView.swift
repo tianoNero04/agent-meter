@@ -110,12 +110,12 @@ struct PopoverTopBar: View {
                     .fill(AppTheme.hairline)
                     .frame(width: 0.75, height: 16)
 
-                // 右上角面板图标：点击后启动完整菜单窗口
+                // 右上角面板图标：点击后启动统一控制中心总窗口
                 PanelMenuButton {
                     // 预先声明窗口开启，防止弹窗收起过程误切回 accessory 模式引起 Dock 图标闪烁
-                    DockPolicyManager.shared.windowWillOpen("menu")
+                    DockPolicyManager.shared.windowWillOpen("master")
                     NSApp.activate(ignoringOtherApps: true)
-                    openWindow(id: "menu")
+                    openWindow(id: "master")
                 }
             }
         }
@@ -148,6 +148,6 @@ struct PanelMenuButton: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
-        .help("启动完整菜单 (Full Menu)")
+        .help("启动控制中心总窗口 (Control Center)")
     }
 }
