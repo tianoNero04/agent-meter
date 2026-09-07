@@ -109,7 +109,7 @@ struct MonitoringDashboardView: View {
 
     // MARK: - 1. 顶栏刊头
     private var headerRow: some View {
-        HStack(alignment: .top) {
+        HStack(alignment: selectedBucket != nil ? .top : .center) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Token 统计")
                     .font(.system(size: 18, weight: .bold))
@@ -133,56 +133,38 @@ struct MonitoringDashboardView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                } else {
-                    let rangeDesc = granularity == .daily ? "最近 7 天" : (granularity == .weekly ? "最近 4 周" : "最近 3 个月")
-                    Text("\(rangeDesc) · \(formatCompactNumber(summary.totalTokens)) Tokens · 2 个提供商")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.textMuted)
                 }
             }
 
             Spacer()
 
-            HStack(spacing: 12) {
-                // 状态/告警指示器微标
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(selectedBucket != nil ? Theme.barCoral : Theme.greenMetric)
-                        .frame(width: 6, height: 6)
-                    Text(selectedBucket != nil ? "下钻聚焦模式" : "用量监测正常")
-                        .font(.system(size: 12))
-                        .foregroundStyle(selectedBucket != nil ? Theme.barCoral : Theme.textMuted)
-                }
-                .padding(.trailing, 4)
-
-                // [ 日 | 周 | 月 ] 颗粒度分段切换器
-                HStack(spacing: 2) {
-                    ForEach(TimeGranularity.allCases) { g in
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                granularity = g
-                                selectedBucket = nil
-                            }
-                        } label: {
-                            Text(g.rawValue)
-                                .font(.system(size: 12, weight: granularity == g ? .semibold : .regular))
-                                .foregroundStyle(granularity == g ? .white : Theme.textMuted)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(granularity == g ? Theme.border : Color.clear)
-                                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            // [ 日 | 周 | 月 ] 颗粒度分段切换器
+            HStack(spacing: 2) {
+                ForEach(TimeGranularity.allCases) { g in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            granularity = g
+                            selectedBucket = nil
                         }
-                        .buttonStyle(.plain)
+                    } label: {
+                        Text(g.rawValue)
+                            .font(.system(size: 12, weight: granularity == g ? .semibold : .regular))
+                            .foregroundStyle(granularity == g ? .white : Theme.textMuted)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(granularity == g ? Theme.border : Color.clear)
+                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                     }
+                    .buttonStyle(.plain)
                 }
-                .padding(3)
-                .background(Color(red: 18/255, green: 18/255, blue: 20/255))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(Theme.border, lineWidth: 1)
-                )
             }
+            .padding(3)
+            .background(Color(red: 18/255, green: 18/255, blue: 20/255))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Theme.border, lineWidth: 1)
+            )
         }
     }
 
