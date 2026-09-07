@@ -82,7 +82,7 @@ struct MonitoringDashboardView: View {
                     // 1. 顶栏刊头：标题、副标题、下钻状态与日/周/月切换器
                     headerRow
 
-                    // 2. 核心三联指标卡 (p50 / p90 / p99 样式卡片)
+                    // 2. 核心三联指标卡 (用量 / 缓存 / 预估支出)
                     metricCardsRow
 
                     // 3. 柱状图区域 (Latency distribution -> Token 消耗分布)
@@ -171,27 +171,27 @@ struct MonitoringDashboardView: View {
     // MARK: - 2. 三联指标卡片
     private var metricCardsRow: some View {
         HStack(spacing: 12) {
-            // Card 1: p50 · 消耗总量
+            // Card 1: 消耗总量
             metricCard(
-                label: selectedBucket != nil ? "p50 · 当前所选周期消耗" : "p50 · 周期 Token 总消耗",
+                label: selectedBucket != nil ? "当前所选周期消耗" : "周期 Token 总消耗",
                 value: formatTokens(summary.totalTokens),
                 badgeText: summary.tokensDeltaRatio.map { String(format: "%.1f%%", abs($0 * 100)) } ?? "0.0%",
                 badgeIsIncrease: (summary.tokensDeltaRatio ?? 0) >= 0,
                 badgePrefix: (summary.tokensDeltaRatio ?? 0) >= 0 ? "↑" : "↓"
             )
 
-            // Card 2: p90 · 缓存命中与节省
+            // Card 2: 缓存命中与节省
             metricCard(
-                label: "p90 · Prompt 缓存命中率",
+                label: "Prompt 缓存命中率",
                 value: String(format: "%.1f%%", summary.cacheHitRate * 100),
                 badgeText: "省 \(summary.cacheSavingsDisplay)",
                 badgeIsIncrease: false,
                 customBadgeColor: Theme.greenMetric
             )
 
-            // Card 3: p99 · 预估算力支出
+            // Card 3: 预估算力支出
             metricCard(
-                label: "p99 · 预估算力折算法币",
+                label: "预估算力折算法币",
                 value: String(format: "%@%.2f", pricing.targetCurrency.symbol, summary.totalEstimatedCost),
                 badgeText: "\(summary.totalRequestsCount) 次会话",
                 badgeIsIncrease: true,
@@ -217,6 +217,8 @@ struct MonitoringDashboardView: View {
                 Text(value)
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
 
                 // 变化率 / 说明徽标
                 HStack(spacing: 2) {
@@ -227,6 +229,7 @@ struct MonitoringDashboardView: View {
                     Text(badgeText)
                         .font(.system(size: 11, weight: .medium))
                 }
+                .lineLimit(1)
                 .foregroundStyle(customBadgeColor ?? (badgeIsIncrease ? Theme.barCoral : Theme.greenMetric))
             }
         }
