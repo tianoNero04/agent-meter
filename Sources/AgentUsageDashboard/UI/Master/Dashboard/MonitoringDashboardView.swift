@@ -254,7 +254,7 @@ struct MonitoringDashboardView: View {
 
                 Spacer()
 
-                Text(selectedBucket != nil ? "再次点击柱子可取消选中" : "点击柱子可下钻 Provider 明细")
+                Text(selectedBucket != nil ? "再次点击取消选中" : "点击柱条查看服务商明细")
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.textDim)
             }
@@ -267,11 +267,8 @@ struct MonitoringDashboardView: View {
                 ForEach(buckets) { bucket in
                     let isSelected = selectedBucket?.id == bucket.id
                     let isHovered = hoveredBucketId == bucket.id
-                    // 高于 75% 峰值的柱子默认微亮，选中的柱子高亮为珊瑚红
-                    let isPeak = bucket.totalTokens > Int(Double(maxTokens) * 0.75) && bucket.totalTokens > 0
-                    let barColor: Color = isSelected
-                        ? Theme.barCoral
-                        : (isPeak ? Theme.barCoral.opacity(0.85) : Theme.barDefault)
+                    // 默认全为中性灰底色无彩色；仅在用户主动点击选中特定柱条时才高亮显示
+                    let barColor: Color = isSelected ? Theme.barCoral : Theme.barDefault
 
                     // 柱子高度计算（最小 6pt，最大 100pt）
                     let ratio = CGFloat(bucket.totalTokens) / CGFloat(maxTokens)
