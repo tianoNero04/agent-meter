@@ -9,9 +9,18 @@ struct ProvidersDiagnosticsTab: View {
     @State private var diagnosticResults: [DiagnosticResult] = []
     @State private var isDetectingEnv = false
     @State private var toolEnvironments: [LocalToolEnvironment] = []
+    /// 已启用通道诊断的检测 Agent 集合（默认包含所有已探测到的工具）
+    @State private var enabledAgentIds: Set<String> = ["antigravity", "claude", "cursor", "vscode", "ollama"]
 
     private let diagnosticsService = NetworkDiagnosticsService()
     private let environmentInspector = LocalEnvironmentInspector()
+
+    /// 本地已检测到安装的额外 Agent（排除已内置在核心模型中的 codex 和 kimi）
+    private var detectedExtraAgents: [LocalToolEnvironment] {
+        toolEnvironments.filter { tool in
+            tool.isInstalled && tool.id != "codex" && tool.id != "kimi"
+        }
+    }
 
     init(model: DashboardModel, latencyBadge: Binding<String?>) {
         self.model = model
@@ -73,10 +82,15 @@ struct ProvidersDiagnosticsTab: View {
                     .disabled(isTesting)
                 }
 
-                // 服务商卡片列表
+                // 服务商与 Agent 通道状态列表
                 VStack(spacing: 12) {
                     providerCard(for: .codex, title: "Codex (OpenAI)", credentialHint: "读取 Keychain 或 ~/.codex/auth.json")
                     providerCard(for: .kimiCode, title: "Kimi Code (Moonshot)", credentialHint: "读取 ~/.kimi-code/credentials/kimi-code.json")
+
+                    // 动态加入检测到的本地 Agent（如 Google Antigravity, Claude Code, Cursor 等）
+                    ForEach(detectedExtraAgents) { agent in
+                        detectedAgentCard(for: agent)
+                    }
                 }
 
                 // 网络诊断雷达结果卡片
@@ -205,13 +219,107 @@ struct ProvidersDiagnosticsTab: View {
         )
     }
 
-    /// 触发单次按需测速
+    /// 已检测到的本地 Agent 服务商卡片
+    private func detectedAgentCard(for agent: LocalToolEnvironment) -> some View {
+        let isEnabled = enabledAgentIds.contains(agent.id)
+
+        return HStack(spacing: 12) {
+            Image(systemName: agent.iconName)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(AppTheme.codex)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text("\(agent.name) (\(agent.vendor))")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+
+                    if let ver = agent.version {
+                        Text(ver)
+                            .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(AppTheme.success)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(AppTheme.success.opacity(0.12))
+                            )
+                    } else {
+                        Text("已就绪")
+                            .font(.system(size: 9.5, weight: .medium))
+                            .foregroundStyle(AppTheme.success)
+                    }
+                }
+
+                Text(agent.locationPath ?? agent.statusDescription)
+                    .font(.system(size: 10.5, weight: .regular, design: .monospaced))
+                    .foregroundStyle(AppTheme.secondaryText)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: Binding(
+                get: { isEnabled },
+                set: { enable in
+                    if enable {
+                        enabledAgentIds.insert(agent.id)
+                    } else {
+                        enabledAgentIds.remove(agent.id)
+                    }
+                }
+            ))
+            .labelsHidden()
+            .toggleStyle(.switch)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
+                .fill(AppTheme.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
+                        .stroke(AppTheme.hairline, lineWidth: 0.75)
+                )
+        )
+    }
+
+    /// 触发单次按需测速（覆盖当前已启用的服务商与已检测到的 Agent 通道）
     private func runDiagnostics() {
         guard !isTesting else { return }
         isTesting = true
 
         Task { @MainActor in
-            let results = await diagnosticsService.runFullDiagnostics()
+            var targets: [(id: String, name: String, url: URL)] = []
+
+            // 1. 核心 Provider (Codex / Kimi)
+            if model.navigation.isEnabled(.codex),
+               let ep = NetworkDiagnosticsService.knownEndpoints["codex"] {
+                targets.append((id: "codex", name: ep.name, url: ep.url))
+            }
+            if model.navigation.isEnabled(.kimiCode),
+               let ep = NetworkDiagnosticsService.knownEndpoints["kimi"] {
+                targets.append((id: "kimi", name: ep.name, url: ep.url))
+            }
+
+            // 2. 本地已检测到且已启用的额外 Agent
+            for agent in detectedExtraAgents where enabledAgentIds.contains(agent.id) {
+                if let ep = NetworkDiagnosticsService.knownEndpoints[agent.id] {
+                    targets.append((id: agent.id, name: ep.name, url: ep.url))
+                }
+            }
+
+            // 兜底保护：若全未选中，则探测默认核心端点
+            if targets.isEmpty {
+                if let ep = NetworkDiagnosticsService.knownEndpoints["codex"] {
+                    targets.append((id: "codex", name: ep.name, url: ep.url))
+                }
+                if let ep = NetworkDiagnosticsService.knownEndpoints["kimi"] {
+                    targets.append((id: "kimi", name: ep.name, url: ep.url))
+                }
+            }
+
+            let results = await diagnosticsService.runDiagnostics(targets: targets)
             self.diagnosticResults = results
             self.isTesting = false
 
@@ -380,6 +488,10 @@ struct ProvidersDiagnosticsTab: View {
         Task { @MainActor in
             let tools = await environmentInspector.inspectAllTools()
             self.toolEnvironments = tools
+            // 自动将新检测到的已安装 agent 纳入可用通道诊断集合
+            for tool in tools where tool.isInstalled {
+                self.enabledAgentIds.insert(tool.id)
+            }
             self.isDetectingEnv = false
         }
     }

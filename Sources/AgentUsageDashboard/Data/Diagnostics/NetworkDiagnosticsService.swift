@@ -75,17 +75,49 @@ public final class NetworkDiagnosticsService: Sendable {
         }
     }
 
-    /// 一键并行探测 Codex 直连与 Kimi Code 节点
-    public func runFullDiagnostics() async -> [DiagnosticResult] {
-        async let codexPing = ping(
-            targetName: "Codex 官方通道",
-            url: URL(string: "https://chatgpt.com/api/auth/session")!
-        )
-        async let kimiPing = ping(
-            targetName: "Kimi Code 通道",
-            url: URL(string: "https://api.moonshot.cn")!
-        )
+    /// 已知主流 Agent 官方与云端服务探测端点映射
+    public static let knownEndpoints: [String: (name: String, url: URL)] = [
+        "codex": ("Codex 官方通道", URL(string: "https://chatgpt.com/api/auth/session")!),
+        "kimi": ("Kimi Code 通道", URL(string: "https://api.moonshot.cn")!),
+        "antigravity": ("Google Antigravity 通道", URL(string: "https://generativelanguage.googleapis.com")!),
+        "claude": ("Claude Code (Anthropic) 通道", URL(string: "https://api.anthropic.com")!),
+        "cursor": ("Cursor AI 服务通道", URL(string: "https://api2.cursor.sh")!),
+        "vscode": ("VS Code 市场通道", URL(string: "https://marketplace.visualstudio.com")!),
+        "ollama": ("Ollama 本地引擎", URL(string: "http://localhost:11434")!)
+    ]
 
-        return await [codexPing, kimiPing]
+    /// 并行探测指定目标端点列表并按原序返回结果
+    public func runDiagnostics(targets: [(id: String, name: String, url: URL)]) async -> [DiagnosticResult] {
+        await withTaskGroup(of: DiagnosticResult.self) { group in
+            for target in targets {
+                group.addTask {
+                    await self.ping(targetName: target.name, url: target.url)
+                }
+            }
+
+            var results: [DiagnosticResult] = []
+            for await res in group {
+                results.append(res)
+            }
+
+            // 按传入 targets 的相对顺序排序
+            return results.sorted { a, b in
+                let idxA = targets.firstIndex { $0.name == a.targetName } ?? 99
+                let idxB = targets.firstIndex { $0.name == b.targetName } ?? 99
+                return idxA < idxB
+            }
+        }
+    }
+
+    /// 一键并行探测默认的主流服务商通道节点
+    public func runFullDiagnostics() async -> [DiagnosticResult] {
+        let targets = [
+            ("codex", "Codex 官方通道", URL(string: "https://chatgpt.com/api/auth/session")!),
+            ("kimi", "Kimi Code 通道", URL(string: "https://api.moonshot.cn")!),
+            ("antigravity", "Google Antigravity 通道", URL(string: "https://generativelanguage.googleapis.com")!),
+            ("claude", "Claude Code (Anthropic) 通道", URL(string: "https://api.anthropic.com")!),
+            ("cursor", "Cursor AI 服务通道", URL(string: "https://api2.cursor.sh")!)
+        ]
+        return await runDiagnostics(targets: targets)
     }
 }
