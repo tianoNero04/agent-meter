@@ -22,7 +22,7 @@ struct MasterDashboardView: View {
             )
 
             // 右侧：选定分区的动态工作区
-            ZStack {
+            ZStack(alignment: .topTrailing) {
                 AppTheme.background.ignoresSafeArea()
 
                 Group {
@@ -41,13 +41,20 @@ struct MasterDashboardView: View {
                     case .models:
                         ScrollView {
                             ModelUsageTab(model: model)
-                                .padding(24)
+                                .padding(.top, 44)
+                                .padding(.horizontal, 24)
+                                .padding(.bottom, 24)
                         }
                     case .savings:
                         PromptSavingsTab(model: model)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+                // 窗口右上角全局常驻：日夜模式切换按钮（位于外框上方，任意页面皆可见）
+                ThemeToggleButton()
+                    .padding(.top, 12)
+                    .padding(.trailing, 20)
             }
         }
         .frame(minWidth: 760, minHeight: 520)

@@ -99,7 +99,9 @@ struct MonitoringDashboardView: View {
                         .stroke(Theme.border, lineWidth: 1)
                 )
             }
-            .padding(20)
+            .padding(.top, 44)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
         }
         .background(Theme.canvasBg.ignoresSafeArea())
         .preferredColorScheme(.dark)
@@ -180,9 +182,6 @@ struct MonitoringDashboardView: View {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .stroke(Theme.border, lineWidth: 1)
                 )
-
-                // 日夜模式切换图标按钮
-                ThemeToggleButton()
             }
         }
     }

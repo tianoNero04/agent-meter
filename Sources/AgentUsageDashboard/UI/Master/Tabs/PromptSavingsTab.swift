@@ -34,9 +34,6 @@ struct PromptSavingsTab: View {
                     }
 
                     Spacer()
-
-                    // 右上角日夜模式切换图标
-                    ThemeToggleButton()
                 }
 
                 // 核心省钱高亮看板
@@ -176,7 +173,9 @@ struct PromptSavingsTab: View {
 
                 Spacer(minLength: 20)
             }
-            .padding(24)
+            .padding(.top, 44)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
         }
         .onAppear {
             preferences = store.load()

@@ -81,7 +81,9 @@ struct GeneralSettingsTab: View {
 
             Spacer()
         }
-        .padding(24)
+        .padding(.top, 44)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 24)
         .onAppear {
             launchAtLogin = (SMAppService.mainApp.status == .enabled)
         }
@@ -123,9 +125,6 @@ struct GeneralSettingsTab: View {
             }
 
             Spacer()
-
-            // 右上角日夜模式切换图标
-            ThemeToggleButton()
         }
     }
 }
