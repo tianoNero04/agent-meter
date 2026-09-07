@@ -2,60 +2,60 @@ import SwiftUI
 
 /// 统一控制台总窗口的核心业务分区枚举
 enum MasterSection: String, CaseIterable, Identifiable, Hashable, Sendable {
+    // 洞察与监控分组（默认首屏）
+    case overview = "overview"
+    case models = "models"
+    case savings = "savings"
+
     // 偏好与系统分组
     case general = "general"
     case providers = "providers"
     case pricing = "pricing"
     case alerts = "alerts"
 
-    // 洞察与对账分组
-    case overview = "overview"
-    case models = "models"
-    case savings = "savings"
-
     var id: String { rawValue }
 
     /// 导航项标题
     var title: String {
         switch self {
+        case .overview: return "Token 监控大盘"
+        case .models: return "模型排行对账"
+        case .savings: return "Prompt 缓存省钱"
         case .general: return "通用设置"
         case .providers: return "服务商与诊断"
         case .pricing: return "模型费率与成本"
         case .alerts: return "额度与重置提醒"
-        case .overview: return "用量大盘总览"
-        case .models: return "模型排行对账"
-        case .savings: return "Prompt 缓存省钱"
         }
     }
 
     /// SF Symbol 图标名称
     var iconName: String {
         switch self {
+        case .overview: return "chart.xyaxis.line"
+        case .models: return "chart.bar.xaxis"
+        case .savings: return "bolt.shield"
         case .general: return "gearshape"
         case .providers: return "network"
         case .pricing: return "dollarsign.circle"
         case .alerts: return "bell.badge"
-        case .overview: return "gauge"
-        case .models: return "chart.bar.xaxis"
-        case .savings: return "bolt.shield"
         }
     }
 
     /// 所属的分组大类
     var group: SidebarGroup {
         switch self {
-        case .general, .providers, .pricing, .alerts:
-            return .preferences
         case .overview, .models, .savings:
             return .insights
+        case .general, .providers, .pricing, .alerts:
+            return .preferences
         }
     }
 }
 
 /// 侧边栏分组类别
 enum SidebarGroup: String, CaseIterable {
+    case insights = "MONITORING"
     case preferences = "PREFERENCES"
-    case insights = "INSIGHTS"
 
     var title: String { rawValue }
 }

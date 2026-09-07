@@ -3,11 +3,11 @@ import SwiftUI
 /// 统一控制台总窗口根视图：集成 ReactBits app-sidebar-1 风格固定侧边栏与动态功能工作区
 struct MasterDashboardView: View {
     @ObservedObject var model: DashboardModel
-    @State private var selectedSection: MasterSection = .general
+    @State private var selectedSection: MasterSection = .overview
     @State private var latencyBadge: String? = nil
     @State private var modelCountBadge: String? = nil
 
-    init(model: DashboardModel, initialSection: MasterSection = .general) {
+    init(model: DashboardModel, initialSection: MasterSection = .overview) {
         self.model = model
         self._selectedSection = State(initialValue: initialSection)
     }
@@ -27,6 +27,9 @@ struct MasterDashboardView: View {
 
                 Group {
                     switch selectedSection {
+                    case .overview:
+                        // 默认进入：ReactBits monitoring-8 风格 Token 用量大盘与下钻看板
+                        MonitoringDashboardView(model: model)
                     case .general:
                         GeneralSettingsTab(model: model)
                     case .providers:
@@ -35,11 +38,6 @@ struct MasterDashboardView: View {
                         ModelPricingTab(model: model)
                     case .alerts:
                         AlertsSettingsTab(model: model)
-                    case .overview:
-                        ScrollView {
-                            OverviewTab(model: model)
-                                .padding(24)
-                        }
                     case .models:
                         ScrollView {
                             ModelUsageTab(model: model)
