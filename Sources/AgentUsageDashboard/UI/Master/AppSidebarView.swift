@@ -18,7 +18,7 @@ enum MasterSection: String, CaseIterable, Identifiable, Hashable, Sendable {
     /// 导航项标题
     var title: String {
         switch self {
-        case .overview: return "Token 监控大盘"
+        case .overview: return "Token 统计"
         case .models: return "模型排行对账"
         case .savings: return "Prompt 缓存省钱"
         case .general: return "通用设置"

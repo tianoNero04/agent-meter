@@ -109,7 +109,7 @@ struct MonitoringDashboardView: View {
     private var headerRow: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("Response times // Token 用量大盘")
+                Text("Token 统计")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(.white)
 
@@ -261,7 +261,7 @@ struct MonitoringDashboardView: View {
     private var histogramSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Token distribution // 消耗时序分布")
+                Text("Token 消耗分布")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white)
 
