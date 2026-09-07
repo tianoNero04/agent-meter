@@ -52,6 +52,8 @@ struct MasterDashboardView: View {
         }
         .frame(minWidth: 760, minHeight: 520)
         .preferredColorScheme(.dark)
+        .navigationTitle("")
+        .background(WindowTitlebarConfigurator())
         .onAppear {
             // 打开控制台总窗口时动态在 Dock 栏唤起图标并激活应用
             DockPolicyManager.shared.windowDidAppear("master")
@@ -68,4 +70,21 @@ struct MasterDashboardView: View {
             DockPolicyManager.shared.windowDidDisappear("master")
         }
     }
+}
+
+/// 原生窗口配置器：彻底隐藏标题栏文字、实现一体化暗黑透明标题栏与背景任意拖拽移动
+private struct WindowTitlebarConfigurator: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async {
+            if let window = view.window {
+                window.titleVisibility = .hidden
+                window.titlebarAppearsTransparent = true
+                window.isMovableByWindowBackground = true
+            }
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }

@@ -38,15 +38,17 @@ public struct AgentUsageDashboardApp: App {
         .defaultSize(width: 460, height: 280)
 
         // 注册统一控制台总窗口（集成 ReactBits app-sidebar-1 风格固定侧边栏与全功能工作区）
-        Window("Agent Meter 控制中心", id: "master") {
+        Window("", id: "master") {
             MasterDashboardView(model: model)
         }
+        .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 780, height: 520)
 
         // 兼容注册旧窗口 ID（以防历史缓存调用）
-        Window("完整菜单", id: "menu") {
+        Window("", id: "menu") {
             MasterDashboardView(model: model)
         }
+        .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 780, height: 520)
     }
 }
