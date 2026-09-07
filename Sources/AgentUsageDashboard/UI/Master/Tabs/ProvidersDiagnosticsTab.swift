@@ -7,8 +7,11 @@ struct ProvidersDiagnosticsTab: View {
 
     @State private var isTesting = false
     @State private var diagnosticResults: [DiagnosticResult] = []
+    @State private var isDetectingEnv = false
+    @State private var toolEnvironments: [LocalToolEnvironment] = []
 
     private let diagnosticsService = NetworkDiagnosticsService()
+    private let environmentInspector = LocalEnvironmentInspector()
 
     init(model: DashboardModel, latencyBadge: Binding<String?>) {
         self.model = model
@@ -146,11 +149,19 @@ struct ProvidersDiagnosticsTab: View {
                         )
                 )
 
+                // 本地 Agent 与开发环境检查卡片
+                localEnvironmentSection
+
                 Spacer(minLength: 20)
             }
             .padding(.top, 44)
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
+        }
+        .onAppear {
+            if toolEnvironments.isEmpty {
+                runEnvironmentInspection()
+            }
         }
     }
 
@@ -210,6 +221,166 @@ struct ProvidersDiagnosticsTab: View {
                 let avg = successful.map(\.latencyMs).reduce(0, +) / successful.count
                 self.latencyBadge = "\(avg)ms"
             }
+        }
+    }
+
+    // MARK: - 本地 Agent 运行环境检测卡片
+
+    /// 本地工具链与 Agent 环境检测卡片组件
+    private var localEnvironmentSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                HStack(spacing: 8) {
+                    Image(systemName: "terminal")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppTheme.codex)
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("本地 Agent 运行环境检测")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(AppTheme.primaryText)
+
+                        Text("ENVIRONMENT // LOCAL.AGENT.TOOLCHAINS")
+                            .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                            .tracking(0.8)
+                            .foregroundStyle(AppTheme.tertiaryText)
+                    }
+                }
+
+                Spacer()
+
+                // 一键环境检测按钮
+                Button {
+                    runEnvironmentInspection()
+                } label: {
+                    HStack(spacing: 5) {
+                        if isDetectingEnv {
+                            ProgressView()
+                                .controlSize(.mini)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 10, weight: .semibold))
+                        }
+                        Text(isDetectingEnv ? "探测中..." : "一键环境检测")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundStyle(AppTheme.primaryText)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(AppTheme.background.opacity(0.8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 5)
+                                    .stroke(AppTheme.hairlineBright, lineWidth: 0.75)
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(isDetectingEnv)
+            }
+
+            if toolEnvironments.isEmpty && !isDetectingEnv {
+                HStack {
+                    Spacer()
+                    VStack(spacing: 6) {
+                        Image(systemName: "sparkle.magnifyingglass")
+                            .font(.system(size: 22, weight: .ultraLight))
+                            .foregroundStyle(AppTheme.tertiaryText)
+                        Text("点击右上角「一键环境检测」扫描本机 Codex、Kimi、Antigravity 等工具链")
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundStyle(AppTheme.secondaryText)
+                    }
+                    .padding(.vertical, 20)
+                    Spacer()
+                }
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(toolEnvironments) { tool in
+                        HStack(spacing: 12) {
+                            Image(systemName: tool.iconName)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(tool.isInstalled ? AppTheme.codex : AppTheme.tertiaryText)
+                                .frame(width: 22)
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack(spacing: 6) {
+                                    Text(tool.name)
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundStyle(AppTheme.primaryText)
+
+                                    Text(tool.vendor)
+                                        .font(.system(size: 9.5, weight: .regular))
+                                        .foregroundStyle(AppTheme.tertiaryText)
+
+                                    if let ver = tool.version {
+                                        Text(ver)
+                                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                            .foregroundStyle(AppTheme.success)
+                                            .padding(.horizontal, 5)
+                                            .padding(.vertical, 1)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 3)
+                                                    .fill(AppTheme.success.opacity(0.12))
+                                            )
+                                    }
+                                }
+
+                                if let path = tool.locationPath {
+                                    Text(path)
+                                        .font(.system(size: 10, weight: .regular, design: .monospaced))
+                                        .foregroundStyle(AppTheme.secondaryText)
+                                        .lineLimit(1)
+                                } else {
+                                    Text(tool.statusDescription)
+                                        .font(.system(size: 10, weight: .regular))
+                                        .foregroundStyle(AppTheme.tertiaryText)
+                                }
+                            }
+
+                            Spacer()
+
+                            // 安装就绪微标
+                            HStack(spacing: 5) {
+                                Circle()
+                                    .fill(tool.isInstalled ? AppTheme.success : AppTheme.tertiaryText.opacity(0.5))
+                                    .frame(width: 6, height: 6)
+
+                                Text(tool.isInstalled ? "已就绪" : "未检测到")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(tool.isInstalled ? AppTheme.success : AppTheme.tertiaryText)
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(AppTheme.background.opacity(tool.isInstalled ? 0.6 : 0.25))
+                        )
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
+                .fill(AppTheme.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
+                        .stroke(AppTheme.hairline, lineWidth: 0.75)
+                )
+        )
+    }
+
+    /// 触发单次本地 Agent 与工具链环境检测
+    private func runEnvironmentInspection() {
+        guard !isDetectingEnv else { return }
+        isDetectingEnv = true
+
+        Task { @MainActor in
+            let tools = await environmentInspector.inspectAllTools()
+            self.toolEnvironments = tools
+            self.isDetectingEnv = false
         }
     }
 }
