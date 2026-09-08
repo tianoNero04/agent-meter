@@ -25,8 +25,11 @@ final class LocalEnvironmentInspectorTests: XCTestCase {
     func testInspectAllToolsReturnsOrderedItems() async throws {
         let tools = await inspector.inspectAllTools()
 
-        // 验证返回的工具数量与预设顺序
-        let expectedIds = ["codex", "kimi", "antigravity", "claude", "cursor", "vscode", "ollama"]
+        // 验证返回的 12 大主流工具数量与预设排序
+        let expectedIds = [
+            "codex", "kimi", "antigravity", "claude", "cursor", "vscode",
+            "grok", "opencode", "openclaw", "hermes", "pi", "ollama"
+        ]
         XCTAssertEqual(tools.map(\.id), expectedIds)
 
         for tool in tools {
@@ -40,6 +43,50 @@ final class LocalEnvironmentInspectorTests: XCTestCase {
         let vscode = try XCTUnwrap(tools.first { $0.id == "vscode" })
         XCTAssertEqual(vscode.name, "VS Code Copilot")
         XCTAssertEqual(vscode.vendor, "GitHub / Microsoft")
+
+        // 验证 Grok Build 属性
+        let grok = try XCTUnwrap(tools.first { $0.id == "grok" })
+        XCTAssertEqual(grok.name, "Grok Build")
+        XCTAssertEqual(grok.vendor, "xAI")
+        XCTAssertEqual(grok.iconName, "bolt.fill")
+
+        // 验证 OpenCode 属性
+        let opencode = try XCTUnwrap(tools.first { $0.id == "opencode" })
+        XCTAssertEqual(opencode.name, "OpenCode")
+        XCTAssertEqual(opencode.vendor, "OpenCode AI")
+        XCTAssertEqual(opencode.iconName, "curlybraces")
+
+        // 验证 OpenClaw 属性
+        let openclaw = try XCTUnwrap(tools.first { $0.id == "openclaw" })
+        XCTAssertEqual(openclaw.name, "OpenClaw")
+        XCTAssertEqual(openclaw.vendor, "OpenClaw")
+        XCTAssertEqual(openclaw.iconName, "wrench.and.screwdriver.fill")
+
+        // 验证 Hermes 属性
+        let hermes = try XCTUnwrap(tools.first { $0.id == "hermes" })
+        XCTAssertEqual(hermes.name, "Hermes")
+        XCTAssertEqual(hermes.vendor, "Nous Research")
+        XCTAssertEqual(hermes.iconName, "paperplane.fill")
+
+        // 验证 Pi 属性
+        let pi = try XCTUnwrap(tools.first { $0.id == "pi" })
+        XCTAssertEqual(pi.name, "Pi")
+        XCTAssertEqual(pi.vendor, "Inflection / Pi Agent")
+        XCTAssertEqual(pi.iconName, "circle.hexagongrid.fill")
+    }
+
+    // 验证网络诊断端点字典完整覆盖所有 12 大工具链
+    func testNetworkDiagnosticsKnownEndpointsCoverage() {
+        let expectedIds = [
+            "codex", "kimi", "antigravity", "claude", "cursor", "vscode",
+            "grok", "opencode", "openclaw", "hermes", "pi", "ollama"
+        ]
+        for id in expectedIds {
+            let ep = NetworkDiagnosticsService.knownEndpoints[id]
+            XCTAssertNotNil(ep, "端点中应包含 \(id)")
+            XCTAssertFalse(ep?.name.isEmpty ?? true)
+            XCTAssertTrue(ep?.url.scheme == "https" || ep?.url.scheme == "http")
+        }
     }
 
     // 验证能够正确从模拟的插件 package.json 中解析版本号

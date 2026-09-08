@@ -10,7 +10,9 @@ struct ProvidersDiagnosticsTab: View {
     @State private var isDetectingEnv = false
     @State private var toolEnvironments: [LocalToolEnvironment] = []
     /// 已启用通道诊断的检测 Agent 集合（默认包含所有已探测到的工具）
-    @State private var enabledAgentIds: Set<String> = ["antigravity", "claude", "cursor", "vscode", "ollama"]
+    @State private var enabledAgentIds: Set<String> = [
+        "antigravity", "claude", "cursor", "vscode", "grok", "opencode", "openclaw", "hermes", "pi", "ollama"
+    ]
 
     private let diagnosticsService = NetworkDiagnosticsService()
     private let environmentInspector = LocalEnvironmentInspector()

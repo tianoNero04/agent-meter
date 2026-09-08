@@ -83,6 +83,11 @@ public final class NetworkDiagnosticsService: Sendable {
         "claude": ("Claude Code (Anthropic) 通道", URL(string: "https://api.anthropic.com")!),
         "cursor": ("Cursor AI 服务通道", URL(string: "https://api2.cursor.sh")!),
         "vscode": ("VS Code Copilot 通道", URL(string: "https://api.githubcopilot.com")!),
+        "grok": ("xAI Grok 服务通道", URL(string: "https://api.x.ai/v1")!),
+        "opencode": ("OpenCode 服务通道", URL(string: "https://opencode.ai")!),
+        "openclaw": ("OpenClaw 服务通道", URL(string: "https://openclaw.ai")!),
+        "hermes": ("Nous Hermes 服务通道", URL(string: "https://nousresearch.com")!),
+        "pi": ("Pi 智能助手通道", URL(string: "https://inflection.ai")!),
         "ollama": ("Ollama 本地引擎", URL(string: "http://localhost:11434")!)
     ]
 
