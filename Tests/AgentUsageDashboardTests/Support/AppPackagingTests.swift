@@ -10,9 +10,16 @@ final class AppPackagingTests: XCTestCase {
             .deletingLastPathComponent() // repository root
     }
 
+    // 验证 App 图标源图、macOS 标准超椭圆蒙版及图标生成脚本均存在
     func testIconSourceExistsAtExpectedPath() {
         let iconSource = repositoryRoot.appendingPathComponent("assets/image.png")
         XCTAssertTrue(FileManager.default.fileExists(atPath: iconSource.path))
+
+        let iconMask = repositoryRoot.appendingPathComponent("assets/appicon_mask.png")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: iconMask.path), "必须包含标准 1024x1024 超椭圆蒙版")
+
+        let iconScript = repositoryRoot.appendingPathComponent("Scripts/generate-icon.py")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: iconScript.path), "必须包含 macOS 图标生成脚本")
     }
 
     func testInfoPlistDeclaresAppIconResource() throws {
@@ -25,10 +32,12 @@ final class AppPackagingTests: XCTestCase {
         XCTAssertEqual(propertyList["CFBundleIconFile"] as? String, "AppIcon.icns")
     }
 
+    // 验证打包脚本自动通过 generate-icon.py 生成并压制标准圆角与投影 icns
     func testPackagingScriptGeneratesAndInstallsAppIcon() throws {
         let scriptURL = repositoryRoot.appendingPathComponent("Scripts/package-app.sh")
         let script = try String(contentsOf: scriptURL, encoding: .utf8)
 
+        XCTAssertTrue(script.contains("generate-icon.py"))
         XCTAssertTrue(script.contains("iconutil -c icns"))
         XCTAssertTrue(script.contains("AppIcon.icns"))
         XCTAssertTrue(script.contains("Contents/Resources/AppIcon.icns"))
