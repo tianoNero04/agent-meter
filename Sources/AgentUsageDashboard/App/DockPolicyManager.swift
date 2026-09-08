@@ -91,6 +91,8 @@ public final class DockPolicyManager {
         revertTask = nil
         activeWindows.insert(identifier)
         applyPolicy(regular: true)
+        // 打开任何独立主窗口时，自动关闭当前展示的菜单栏小窗
+        MenuBarDismissManager.shared.dismiss()
     }
 
     /// 独立窗口已完成展示

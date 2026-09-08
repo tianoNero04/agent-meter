@@ -10,6 +10,8 @@ struct PopoverHeader: View {
             DockPolicyManager.shared.windowWillOpen("master")
             NSApp.activate(ignoringOtherApps: true)
             openSettings(id: "master")
+            // 打开主页面后，自动关闭当前展开的菜单栏小窗
+            MenuBarDismissManager.shared.dismiss()
         } label: {
             HStack(spacing: 8) {
                 // 极简白色几何 Logo

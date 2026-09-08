@@ -42,6 +42,12 @@ struct PopoverView: View {
         }
         .frame(width: 390, height: 425)
         .preferredColorScheme(.dark)
+        // 捕获菜单栏弹窗的宿主 NSWindow，以便打开主页面时可精确瞬时收起
+        .background(
+            WindowAccessor { window in
+                MenuBarDismissManager.shared.register(window: window)
+            }
+        )
         .onAppear {
             restoreSelection()
             normalizeSelection()
@@ -116,6 +122,8 @@ struct PopoverTopBar: View {
                     DockPolicyManager.shared.windowWillOpen("master")
                     NSApp.activate(ignoringOtherApps: true)
                     openWindow(id: "master")
+                    // 打开主页面后，自动关闭当前菜单栏小窗
+                    MenuBarDismissManager.shared.dismiss()
                 }
             }
         }
@@ -149,5 +157,28 @@ struct PanelMenuButton: View {
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
         .help("启动控制中心总窗口 (Control Center)")
+    }
+}
+
+/// 用于在 SwiftUI 视图生命周期内捕获其宿主 NSWindow 的轻量级桥接组件
+private struct WindowAccessor: NSViewRepresentable {
+    let onWindow: (NSWindow) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async {
+            if let window = view.window {
+                onWindow(window)
+            }
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async {
+            if let window = nsView.window {
+                onWindow(window)
+            }
+        }
     }
 }
