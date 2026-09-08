@@ -7,7 +7,7 @@
 ## 当前能力
 
 - macOS 原生 SwiftUI `MenuBarExtra`，最低 macOS 13 Ventura。
-- App 图标源文件位于 `assets/image.png`，打包脚本会自动按照 Apple HIG 规范裁切为标准连续超椭圆圆角（Squircle），合成环境光与主光源微投影及边缘防溢微描边，生成多尺寸 `AppIcon.icns` 并写入 App 包。弹窗 Logo 使用 `Sources/AgentUsageDashboard/Resources/AgentMeterLogoWhite.png` 的透明白色版本，不改变 App 图标源。
+- App 图标源文件位于 `assets/image.png`，打包脚本会自动按照 Apple HIG 规范裁切为标准纯净连续超椭圆圆角（Squircle），与系统 Dock 原生材质与投影无缝融合，生成多尺寸 `AppIcon.icns` 并写入 App 包。弹窗 Logo 使用 `Sources/AgentUsageDashboard/Resources/AgentMeterLogoWhite.png` 的透明白色版本，不改变 App 图标源。
 - 视觉概念图归档在 `assets/references/agent-concept.png`；弹窗界面完全采用原生 SwiftUI 矢量布局与暗色材质绘制，不使用静态背景贴图。
 - 点击弹窗左上角 Logo 或右上角控制台按钮，可唤起原生“Agent Meter 控制中心”总窗口；窗口打开时动态在 Dock 显示图标，关闭后无缝恢复为轻量纯菜单栏模式。
 - 控制中心采用固定 220pt 现代深色侧边栏（像素级复刻 ReactBits Pro `app-sidebar-1` 风格），内置 5 大专业面板：通用系统设置（开机自启）、服务商管理与按需通道测速雷达、主流模型定价矩阵与多币种成本换算、0-HTTP 本地原生日历重置提醒闹钟与低额度预警、Prompt Caching 缓存省钱感知看板与模型对账。

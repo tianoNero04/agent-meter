@@ -1,26 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-为 macOS 生成符合 Apple 人机交互指南 (HIG) 标准的 App 图标：
+为 macOS 生成符合 Apple 人机交互指南 (HIG) 标准的纯净 App 图标：
 - 1024x1024 透明画布
-- 824x824 居中超椭圆底板 (Squircle)
-- 原生圆角平滑过渡 (连续超椭圆曲率)
-- 双层微投影 (Ambient Shadow 柔和环境光 + Key Shadow 主光源阴影)
-- 1px 微描边 (Rim Border)，在各种背景与浅色壁纸下保持轮廓分明
+- 824x824 居中连续超椭圆底板 (Squircle)
+- 纯净平滑抗锯齿边缘过渡，彻底去除人工外描边与人工黑阴影（macOS 系统 Dock 会自动渲染原生层次投影）
 """
 
 import sys
 import os
-from PIL import Image, ImageFilter, ImageOps, ImageChops
+from PIL import Image
 
 def generate_macos_icon(source_path: str, mask_path: str, output_path: str, logo_scale: float = 1.0):
     """
-    生成 1024x1024 尺寸的标准 macOS 风格图标。
+    生成 1024x1024 尺寸的标准 macOS 风格圆角图标。
     
     :param source_path: 原始图标路径（assets/image.png）
     :param mask_path: 居中超椭圆蒙版路径（assets/appicon_mask.png）
     :param output_path: 输出 1024x1024 PNG 图标路径
-    :param logo_scale: Logo 相对 824x824 底板缩放比例（默认 1.0，源图已自带标准边距）
+    :param logo_scale: Logo 相对 824x824 底板缩放比例（默认 1.0）
     """
     if not os.path.isfile(source_path):
         raise FileNotFoundError(f"找不到图标源文件: {source_path}")
@@ -49,42 +47,13 @@ def generate_macos_icon(source_path: str, mask_path: str, output_path: str, logo
     sub_mask = mask_image.crop((100, 100, 924, 924))
     tile.putalpha(sub_mask)
 
-    # 5. 生成 macOS HIG 标准双层阴影
-    # (a) Ambient Shadow: 柔和漫反射环境光投影
-    shadow_mask = Image.new("L", (1024, 1024), 0)
-    shadow_mask.paste(sub_mask, (100, 100))
-
-    ambient_shadow = Image.new("RGBA", (1024, 1024), (0, 0, 0, int(255 * 0.18)))
-    ambient_shadow.putalpha(shadow_mask.filter(ImageFilter.GaussianBlur(16)))
-    ambient_offset = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
-    ambient_offset.paste(ambient_shadow, (0, 6))
-
-    # (b) Key Shadow: 垂直主光源微阴影
-    key_shadow = Image.new("RGBA", (1024, 1024), (0, 0, 0, int(255 * 0.22)))
-    key_shadow.putalpha(shadow_mask.filter(ImageFilter.GaussianBlur(8)))
-    key_offset = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
-    key_offset.paste(key_shadow, (0, 14))
-
-    # 合成阴影到画布
-    canvas = Image.alpha_composite(canvas, ambient_offset)
-    canvas = Image.alpha_composite(canvas, key_offset)
-
-    # 6. 将圆角底板居中贴入画布 (100, 100)
+    # 5. 将无人工黑边、无外圈重复脏阴影的纯净圆角底板贴入画布 (100, 100)
     canvas.paste(tile, (100, 100), tile)
 
-    # 7. 绘制边缘 1px 微细描边 (Rim Border)
-    eroded_mask = ImageOps.invert(mask_image).filter(ImageFilter.MaxFilter(3))
-    eroded_mask = ImageOps.invert(eroded_mask)
-    rim_mask = ImageChops.subtract(mask_image, eroded_mask)
-
-    rim_layer = Image.new("RGBA", (1024, 1024), (0, 0, 0, int(255 * 0.12)))
-    rim_layer.putalpha(rim_mask)
-    canvas = Image.alpha_composite(canvas, rim_layer)
-
-    # 8. 保存输出文件
+    # 6. 保存输出文件
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     canvas.save(output_path, "PNG")
-    print(f"成功生成 macOS 标准圆角图标：{output_path}")
+    print(f"成功生成 macOS 纯净标准圆角图标：{output_path}")
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:
