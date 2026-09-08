@@ -82,7 +82,7 @@ public final class NetworkDiagnosticsService: Sendable {
         "antigravity": ("Google Antigravity 通道", URL(string: "https://generativelanguage.googleapis.com")!),
         "claude": ("Claude Code (Anthropic) 通道", URL(string: "https://api.anthropic.com")!),
         "cursor": ("Cursor AI 服务通道", URL(string: "https://api2.cursor.sh")!),
-        "vscode": ("VS Code 市场通道", URL(string: "https://marketplace.visualstudio.com")!),
+        "vscode": ("VS Code Copilot 通道", URL(string: "https://api.githubcopilot.com")!),
         "ollama": ("Ollama 本地引擎", URL(string: "http://localhost:11434")!)
     ]
 

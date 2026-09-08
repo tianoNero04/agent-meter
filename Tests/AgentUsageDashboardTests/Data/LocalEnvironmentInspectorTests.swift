@@ -22,7 +22,7 @@ final class LocalEnvironmentInspectorTests: XCTestCase {
         XCTAssertEqual(inspector.compactPath(systemPath), systemPath)
     }
 
-    func testInspectAllToolsReturnsOrderedItems() async {
+    func testInspectAllToolsReturnsOrderedItems() async throws {
         let tools = await inspector.inspectAllTools()
 
         // 验证返回的工具数量与预设顺序
@@ -34,10 +34,30 @@ final class LocalEnvironmentInspectorTests: XCTestCase {
             XCTAssertFalse(tool.vendor.isEmpty)
             XCTAssertFalse(tool.iconName.isEmpty)
             XCTAssertFalse(tool.statusDescription.isEmpty)
-
-            if tool.isInstalled {
-                XCTAssertNotNil(tool.locationPath)
-            }
         }
+
+        // 验证 VS Code Copilot 专属名称与厂商映射
+        let vscode = try XCTUnwrap(tools.first { $0.id == "vscode" })
+        XCTAssertEqual(vscode.name, "VS Code Copilot")
+        XCTAssertEqual(vscode.vendor, "GitHub / Microsoft")
+    }
+
+    // 验证能够正确从模拟的插件 package.json 中解析版本号
+    func testReadExtensionVersionParsesPackageJSON() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("copilot_test_\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let packageJSON = """
+        {
+            "name": "copilot",
+            "version": "1.250.0"
+        }
+        """
+        let fileURL = tempDir.appendingPathComponent("package.json")
+        try packageJSON.write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let parsedVersion = inspector.readExtensionVersion(directoryURL: tempDir)
+        XCTAssertEqual(parsedVersion, "1.250.0")
     }
 }

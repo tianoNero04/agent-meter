@@ -259,24 +259,45 @@ public final class LocalEnvironmentInspector: Sendable {
         )
     }
 
-    /// 检测 Visual Studio Code
+    /// 检测 Visual Studio Code 与 GitHub Copilot Agent
     private func detectVSCode() async -> LocalToolEnvironment {
         let app = findApplication(named: "Visual Studio Code.app")
         let exe = findExecutable(named: "code")
 
-        let version = app.flatMap { readAppVersion(url: $0) }
-        let isInstalled = (app != nil || exe != nil)
-        let mainPath = app?.path ?? exe?.path
+        let appVersion = app.flatMap { readAppVersion(url: $0) }
+
+        // 检索 GitHub Copilot 官方插件 (~/.vscode/extensions/github.copilot-*)
+        let copilotExtension = findVSCodeExtension(namedPrefix: "github.copilot-")
+            ?? findVSCodeExtension(namedPrefix: "github.copilot")
+        let copilotVersion = copilotExtension.flatMap { readExtensionVersion(directoryURL: $0) }
+
+        let isInstalled = (app != nil || exe != nil || copilotExtension != nil)
+        let mainPath = copilotExtension?.path ?? app?.path ?? exe?.path
+
+        var versionParts: [String] = []
+        if let cv = copilotVersion { versionParts.append("Copilot \(formatVersion(cv))") }
+        if let av = appVersion { versionParts.append("VS Code \(formatVersion(av))") }
+
+        let status: String
+        if copilotExtension != nil && (app != nil || exe != nil) {
+            status = "VS Code 宿主与 Copilot 插件均已就绪"
+        } else if copilotExtension != nil {
+            status = "GitHub Copilot 插件已安装就绪"
+        } else if app != nil || exe != nil {
+            status = "VS Code 编辑器已就绪（支持在插件市场中激活 Copilot）"
+        } else {
+            status = "未在系统应用或扩展目录中检测到"
+        }
 
         return LocalToolEnvironment(
             id: "vscode",
-            name: "Visual Studio Code",
-            vendor: "Microsoft",
+            name: "VS Code Copilot",
+            vendor: "GitHub / Microsoft",
             iconName: "chevron.left.forwardslash.chevron.right",
             isInstalled: isInstalled,
-            version: version.map { formatVersion($0) },
+            version: versionParts.isEmpty ? nil : versionParts.joined(separator: " · "),
             locationPath: mainPath.map { compactPath($0) },
-            statusDescription: isInstalled ? "VS Code 编辑器环境已就绪" : "未在系统 /Applications 中找到"
+            statusDescription: status
         )
     }
 
@@ -373,6 +394,44 @@ public final class LocalEnvironmentInspector: Sendable {
         guard let data = try? Data(contentsOf: plistURL),
               let dict = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any],
               let version = dict["CFBundleShortVersionString"] as? String else {
+            return nil
+        }
+        return version
+    }
+
+    /// 在 ~/.vscode/extensions 或 ~/.vscode-insiders/extensions 查找指定前缀的插件目录
+    public func findVSCodeExtension(namedPrefix prefix: String) -> URL? {
+        let home = fileManager.homeDirectoryForCurrentUser
+        let candidateRoots = [
+            home.appendingPathComponent(".vscode/extensions", isDirectory: true),
+            home.appendingPathComponent(".vscode-insiders/extensions", isDirectory: true)
+        ]
+
+        for root in candidateRoots {
+            guard let items = try? fileManager.contentsOfDirectory(
+                at: root,
+                includingPropertiesForKeys: nil,
+                options: [.skipsHiddenFiles]
+            ) else { continue }
+
+            // 倒序排列以优先选用最新版本（如 github.copilot-1.250.0 优先于旧版本）
+            let matches = items
+                .filter { $0.lastPathComponent.hasPrefix(prefix) }
+                .sorted { $0.lastPathComponent > $1.lastPathComponent }
+
+            if let first = matches.first {
+                return first
+            }
+        }
+        return nil
+    }
+
+    /// 从 VS Code 扩展插件包的 package.json 中解析版本号
+    public func readExtensionVersion(directoryURL: URL) -> String? {
+        let packageJSONURL = directoryURL.appendingPathComponent("package.json")
+        guard let data = try? Data(contentsOf: packageJSONURL),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let version = json["version"] as? String else {
             return nil
         }
         return version
