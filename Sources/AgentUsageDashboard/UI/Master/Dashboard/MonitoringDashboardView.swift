@@ -112,32 +112,10 @@ struct MonitoringDashboardView: View {
 
     // MARK: - 1. 顶栏刊头
     private var headerRow: some View {
-        HStack(alignment: selectedBucket != nil ? .top : .center) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Token 统计")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.white)
-
-                if let selected = selectedBucket {
-                    HStack(spacing: 6) {
-                        Text("已下钻：\(selected.fullDescription)")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Theme.barCoral)
-
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                selectedBucket = nil
-                            }
-                        } label: {
-                            Text("✕ 清除筛选")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(Theme.textMuted)
-                                .underline()
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
+        HStack(alignment: .center) {
+            Text("Token 统计")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(.white)
 
             Spacer()
 
