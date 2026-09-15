@@ -340,13 +340,8 @@ public final class LocalEnvironmentInspector: Sendable {
 
     // MARK: - 辅助发现工具方法
 
-    /// 检测 xAI Grok Build (CLI 与配置环境)
+    /// 检测 xAI Grok Build CLI
     private func detectGrok() async -> LocalToolEnvironment {
-        let home = fileManager.homeDirectoryForCurrentUser
-        let configDir = home.appendingPathComponent(".grok", isDirectory: true)
-        let configFile = configDir.appendingPathComponent("config.toml")
-        let configExists = fileManager.fileExists(atPath: configDir.path)
-
         // 检索可执行文件（优先 PATH、GROK_BIN_DIR 环境变量、~/.grok/bin 及 npm 全局路径）
         let exe = findExecutable(named: "grok", extraSubpaths: [
             ".grok/bin",
@@ -355,19 +350,18 @@ public final class LocalEnvironmentInspector: Sendable {
             ".volta/bin"
         ], extraEnvVars: ["GROK_BIN_DIR"])
 
-        let version = exe != nil ? await runVersion(at: exe!) : nil
-        let isInstalled = (exe != nil || configExists)
-        let primaryPath = exe?.path ?? (fileManager.fileExists(atPath: configFile.path) ? configFile.path : configDir.path)
-
-        let status: String
-        if exe != nil && configExists {
-            status = "Grok Build 命令行与环境配置均已就绪"
-        } else if exe != nil {
-            status = "Grok Build 命令行工具已就绪"
-        } else if configExists {
-            status = "检测到 Grok 运行配置环境 (~/.grok)"
-        } else {
-            status = "未在系统路径或 ~/.grok 中检测到"
+        if let exe {
+            let version = await runVersion(at: exe)
+            return LocalToolEnvironment(
+                id: "grok",
+                name: "Grok Build",
+                vendor: "xAI",
+                iconName: "bolt.fill",
+                isInstalled: true,
+                version: version.map { formatVersion($0) },
+                locationPath: compactPath(exe.path),
+                statusDescription: "官方命令行工具已安装就绪"
+            )
         }
 
         return LocalToolEnvironment(
@@ -375,19 +369,15 @@ public final class LocalEnvironmentInspector: Sendable {
             name: "Grok Build",
             vendor: "xAI",
             iconName: "bolt.fill",
-            isInstalled: isInstalled,
-            version: version.map { formatVersion($0) },
-            locationPath: isInstalled ? compactPath(primaryPath) : nil,
-            statusDescription: status
+            isInstalled: false,
+            version: nil,
+            locationPath: nil,
+            statusDescription: "未在系统路径或 ~/.grok/bin 中检测到"
         )
     }
 
-    /// 检测 OpenCode AI 编程助手
+    /// 检测 OpenCode AI 编程助手 CLI
     private func detectOpenCode() async -> LocalToolEnvironment {
-        let home = fileManager.homeDirectoryForCurrentUser
-        let configDir = home.appendingPathComponent(".opencode", isDirectory: true)
-        let configExists = fileManager.fileExists(atPath: configDir.path)
-
         // 检索可执行文件（支持 OPENCODE_INSTALL_DIR、~/.opencode/bin 等）
         let exe = findExecutable(named: "opencode", extraSubpaths: [
             ".opencode/bin",
@@ -396,19 +386,18 @@ public final class LocalEnvironmentInspector: Sendable {
             ".volta/bin"
         ], extraEnvVars: ["OPENCODE_INSTALL_DIR"])
 
-        let version = exe != nil ? await runVersion(at: exe!) : nil
-        let isInstalled = (exe != nil || configExists)
-        let primaryPath = exe?.path ?? configDir.path
-
-        let status: String
-        if exe != nil && configExists {
-            status = "OpenCode 命令行与开发配置均已就绪"
-        } else if exe != nil {
-            status = "OpenCode 命令行工具已就绪"
-        } else if configExists {
-            status = "检测到 OpenCode 运行配置环境 (~/.opencode)"
-        } else {
-            status = "未在系统路径或 ~/.opencode 中检测到"
+        if let exe {
+            let version = await runVersion(at: exe)
+            return LocalToolEnvironment(
+                id: "opencode",
+                name: "OpenCode",
+                vendor: "OpenCode AI",
+                iconName: "curlybraces",
+                isInstalled: true,
+                version: version.map { formatVersion($0) },
+                locationPath: compactPath(exe.path),
+                statusDescription: "OpenCode 命令行工具已就绪"
+            )
         }
 
         return LocalToolEnvironment(
@@ -416,19 +405,15 @@ public final class LocalEnvironmentInspector: Sendable {
             name: "OpenCode",
             vendor: "OpenCode AI",
             iconName: "curlybraces",
-            isInstalled: isInstalled,
-            version: version.map { formatVersion($0) },
-            locationPath: isInstalled ? compactPath(primaryPath) : nil,
-            statusDescription: status
+            isInstalled: false,
+            version: nil,
+            locationPath: nil,
+            statusDescription: "未在系统路径或 ~/.opencode/bin 中检测到"
         )
     }
 
-    /// 检测 OpenClaw Agent 工具链
+    /// 检测 OpenClaw Agent 工具链 CLI
     private func detectOpenClaw() async -> LocalToolEnvironment {
-        let home = fileManager.homeDirectoryForCurrentUser
-        let configDir = home.appendingPathComponent(".openclaw", isDirectory: true)
-        let configExists = fileManager.fileExists(atPath: configDir.path)
-
         // 检索可执行文件（支持 npm 全局安装、~/.openclaw/bin 等）
         let exe = findExecutable(named: "openclaw", extraSubpaths: [
             ".openclaw/bin",
@@ -436,19 +421,18 @@ public final class LocalEnvironmentInspector: Sendable {
             ".npm-global/bin"
         ])
 
-        let version = exe != nil ? await runVersion(at: exe!) : nil
-        let isInstalled = (exe != nil || configExists)
-        let primaryPath = exe?.path ?? configDir.path
-
-        let status: String
-        if exe != nil && configExists {
-            status = "OpenClaw 命令行与 Agent 配置均已就绪"
-        } else if exe != nil {
-            status = "OpenClaw 命令行工具已就绪"
-        } else if configExists {
-            status = "检测到 OpenClaw 运行配置环境 (~/.openclaw)"
-        } else {
-            status = "未在系统路径或 ~/.openclaw 中检测到"
+        if let exe {
+            let version = await runVersion(at: exe)
+            return LocalToolEnvironment(
+                id: "openclaw",
+                name: "OpenClaw",
+                vendor: "OpenClaw",
+                iconName: "wrench.and.screwdriver.fill",
+                isInstalled: true,
+                version: version.map { formatVersion($0) },
+                locationPath: compactPath(exe.path),
+                statusDescription: "OpenClaw 命令行工具已就绪"
+            )
         }
 
         return LocalToolEnvironment(
@@ -456,39 +440,33 @@ public final class LocalEnvironmentInspector: Sendable {
             name: "OpenClaw",
             vendor: "OpenClaw",
             iconName: "wrench.and.screwdriver.fill",
-            isInstalled: isInstalled,
-            version: version.map { formatVersion($0) },
-            locationPath: isInstalled ? compactPath(primaryPath) : nil,
-            statusDescription: status
+            isInstalled: false,
+            version: nil,
+            locationPath: nil,
+            statusDescription: "未在系统路径中检测到"
         )
     }
 
-    /// 检测 Nous Research Hermes Agent
+    /// 检测 Nous Research Hermes Agent CLI
     private func detectHermes() async -> LocalToolEnvironment {
-        let home = fileManager.homeDirectoryForCurrentUser
-        let configDir = home.appendingPathComponent(".hermes", isDirectory: true)
-        let configFile = configDir.appendingPathComponent("config.yaml")
-        let configExists = fileManager.fileExists(atPath: configDir.path)
-
         // 检索可执行文件（支持 HERMES_HOME、~/.hermes/bin、Python 路径等）
         let exe = findExecutable(named: "hermes", extraSubpaths: [
             ".hermes/bin",
             ".local/bin"
         ], extraEnvVars: ["HERMES_HOME"])
 
-        let version = exe != nil ? await runVersion(at: exe!) : nil
-        let isInstalled = (exe != nil || configExists)
-        let primaryPath = exe?.path ?? (fileManager.fileExists(atPath: configFile.path) ? configFile.path : configDir.path)
-
-        let status: String
-        if exe != nil && configExists {
-            status = "Hermes 命令行与多模型配置均已就绪"
-        } else if exe != nil {
-            status = "Hermes 命令行工具已就绪"
-        } else if configExists {
-            status = "检测到 Hermes 运行配置与模型清单 (~/.hermes)"
-        } else {
-            status = "未在系统路径或 ~/.hermes 中检测到"
+        if let exe {
+            let version = await runVersion(at: exe)
+            return LocalToolEnvironment(
+                id: "hermes",
+                name: "Hermes",
+                vendor: "Nous Research",
+                iconName: "paperplane.fill",
+                isInstalled: true,
+                version: version.map { formatVersion($0) },
+                locationPath: compactPath(exe.path),
+                statusDescription: "Hermes 命令行工具已就绪"
+            )
         }
 
         return LocalToolEnvironment(
@@ -496,19 +474,15 @@ public final class LocalEnvironmentInspector: Sendable {
             name: "Hermes",
             vendor: "Nous Research",
             iconName: "paperplane.fill",
-            isInstalled: isInstalled,
-            version: version.map { formatVersion($0) },
-            locationPath: isInstalled ? compactPath(primaryPath) : nil,
-            statusDescription: status
+            isInstalled: false,
+            version: nil,
+            locationPath: nil,
+            statusDescription: "未在系统路径或 ~/.hermes/bin 中检测到"
         )
     }
 
-    /// 检测 Pi 编程智能体
+    /// 检测 Pi 编程智能体 CLI
     private func detectPi() async -> LocalToolEnvironment {
-        let home = fileManager.homeDirectoryForCurrentUser
-        let configDir = home.appendingPathComponent(".pi", isDirectory: true)
-        let configExists = fileManager.fileExists(atPath: configDir.path)
-
         // 检索可执行文件（支持 npm 全局、~/.local/bin 等）
         let exe = findExecutable(named: "pi", extraSubpaths: [
             ".local/bin",
@@ -516,19 +490,18 @@ public final class LocalEnvironmentInspector: Sendable {
             ".volta/bin"
         ])
 
-        let version = exe != nil ? await runVersion(at: exe!) : nil
-        let isInstalled = (exe != nil || configExists)
-        let primaryPath = exe?.path ?? configDir.path
-
-        let status: String
-        if exe != nil && configExists {
-            status = "Pi 命令行与会话环境均已就绪"
-        } else if exe != nil {
-            status = "Pi 命令行工具已就绪"
-        } else if configExists {
-            status = "检测到 Pi 运行与会话环境 (~/.pi)"
-        } else {
-            status = "未在系统路径或 ~/.pi 中检测到"
+        if let exe {
+            let version = await runVersion(at: exe)
+            return LocalToolEnvironment(
+                id: "pi",
+                name: "Pi",
+                vendor: "Inflection / Pi Agent",
+                iconName: "circle.hexagongrid.fill",
+                isInstalled: true,
+                version: version.map { formatVersion($0) },
+                locationPath: compactPath(exe.path),
+                statusDescription: "Pi 命令行工具已就绪"
+            )
         }
 
         return LocalToolEnvironment(
@@ -536,10 +509,10 @@ public final class LocalEnvironmentInspector: Sendable {
             name: "Pi",
             vendor: "Inflection / Pi Agent",
             iconName: "circle.hexagongrid.fill",
-            isInstalled: isInstalled,
-            version: version.map { formatVersion($0) },
-            locationPath: isInstalled ? compactPath(primaryPath) : nil,
-            statusDescription: status
+            isInstalled: false,
+            version: nil,
+            locationPath: nil,
+            statusDescription: "未在系统路径中检测到"
         )
     }
 
