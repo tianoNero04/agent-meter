@@ -18,14 +18,17 @@ struct UserDefaultsPricingSettingsStore: PricingSettingsStore {
 
     func load() -> PricingPreferences {
         guard let data = defaults.data(forKey: Keys.pricingPreferences),
-              let preferences = try? JSONDecoder().decode(PricingPreferences.self, from: data) else {
+              var preferences = try? JSONDecoder().decode(PricingPreferences.self, from: data) else {
             return PricingPreferences()
         }
+        preferences.sanitizeCustomPricings()
         return preferences
     }
 
     func save(_ preferences: PricingPreferences) {
-        if let data = try? JSONEncoder().encode(preferences) {
+        var clean = preferences
+        clean.sanitizeCustomPricings()
+        if let data = try? JSONEncoder().encode(clean) {
             defaults.set(data, forKey: Keys.pricingPreferences)
         }
     }

@@ -88,14 +88,12 @@ struct ModelPricing: Codable, Identifiable, Hashable, Sendable {
 /// 默认内置的主流模型官方定价预设字典（已对齐 models.dev 2026 年最新官方真实费率，单位：USD/1M Tokens）
 enum DefaultModelPricings {
     static let presets: [ModelPricing] = [
-        // MARK: - OpenAI Codex 核心旗舰系列 (2026 主力)
+        // MARK: - OpenAI Codex 核心旗舰系列
         ModelPricing(modelName: "gpt-5.6-luna", inputPerMillion: 0.20, cacheReadPerMillion: 0.02, outputPerMillion: 1.20),
         ModelPricing(modelName: "gpt-5.6-terra", inputPerMillion: 2.00, cacheReadPerMillion: 0.20, outputPerMillion: 12.00),
         ModelPricing(modelName: "gpt-5.6", inputPerMillion: 4.00, cacheReadPerMillion: 0.40, outputPerMillion: 20.00),
-        ModelPricing(modelName: "gpt-5.6-sol", inputPerMillion: 4.00, cacheReadPerMillion: 0.40, outputPerMillion: 20.00),
         ModelPricing(modelName: "gpt-5.5", inputPerMillion: 5.00, cacheReadPerMillion: 0.50, outputPerMillion: 30.00),
         ModelPricing(modelName: "gpt-5.4-mini", inputPerMillion: 0.75, cacheReadPerMillion: 0.075, outputPerMillion: 4.50),
-        ModelPricing(modelName: "codex-auto-review", inputPerMillion: 0.75, cacheReadPerMillion: 0.075, outputPerMillion: 4.50),
         ModelPricing(modelName: "o3-mini", inputPerMillion: 1.10, cacheReadPerMillion: 0.55, outputPerMillion: 4.40),
         ModelPricing(modelName: "o1", inputPerMillion: 15.00, cacheReadPerMillion: 7.50, outputPerMillion: 60.00),
         ModelPricing(modelName: "gpt-4o", inputPerMillion: 2.50, cacheReadPerMillion: 1.25, outputPerMillion: 10.00),
@@ -103,17 +101,10 @@ enum DefaultModelPricings {
 
         // MARK: - Kimi (Moonshot AI & Kimi Code 核心系列)
         ModelPricing(modelName: "kimi-k3", inputPerMillion: 3.00, cacheReadPerMillion: 0.30, outputPerMillion: 15.00),
-        ModelPricing(modelName: "k3-256k", inputPerMillion: 3.00, cacheReadPerMillion: 0.30, outputPerMillion: 15.00),
-        ModelPricing(modelName: "k3", inputPerMillion: 3.00, cacheReadPerMillion: 0.30, outputPerMillion: 15.00),
-        ModelPricing(modelName: "kimi-code/k3-256k", inputPerMillion: 3.00, cacheReadPerMillion: 0.30, outputPerMillion: 15.00),
-        ModelPricing(modelName: "kimi-code/k3", inputPerMillion: 3.00, cacheReadPerMillion: 0.30, outputPerMillion: 15.00),
         ModelPricing(modelName: "kimi-k2.7-code", inputPerMillion: 0.95, cacheReadPerMillion: 0.19, outputPerMillion: 4.00),
-        ModelPricing(modelName: "kimi-code/kimi-for-coding", inputPerMillion: 0.95, cacheReadPerMillion: 0.19, outputPerMillion: 4.00),
         ModelPricing(modelName: "kimi-k2.7-code-highspeed", inputPerMillion: 1.90, cacheReadPerMillion: 0.38, outputPerMillion: 8.00),
-        ModelPricing(modelName: "kimi-code/kimi-for-coding-highspeed", inputPerMillion: 1.90, cacheReadPerMillion: 0.38, outputPerMillion: 8.00),
         ModelPricing(modelName: "moonshot-v1-8k", inputPerMillion: 1.67, cacheReadPerMillion: 0.28, outputPerMillion: 1.67, baseCurrency: .cny),
         ModelPricing(modelName: "moonshot-v1-32k", inputPerMillion: 3.33, cacheReadPerMillion: 0.56, outputPerMillion: 3.33, baseCurrency: .cny),
-        ModelPricing(modelName: "kimi-latest", inputPerMillion: 2.00, cacheReadPerMillion: 0.30, outputPerMillion: 2.00, baseCurrency: .cny),
 
         // MARK: - Anthropic Claude 系列
         ModelPricing(modelName: "claude-sonnet-4-5", inputPerMillion: 3.00, cacheReadPerMillion: 0.30, outputPerMillion: 15.00),
@@ -187,6 +178,18 @@ struct PricingPreferences: Codable, Equatable, Sendable {
         self.targetCurrency = targetCurrency
         self.usdToCnyRate = usdToCnyRate
         self.customPricings = customPricings
+    }
+
+    /// 自动清洗并规范化自定义模型字典，去除历史写入的组织别名与重复项
+    mutating func sanitizeCustomPricings() {
+        var cleanMap: [String: ModelPricing] = [:]
+        for (_, pricing) in customPricings {
+            let canonical = DefaultModelPricings.normalizeModelName(pricing.modelName)
+            var normalizedItem = pricing
+            normalizedItem.modelName = canonical
+            cleanMap[canonical] = normalizedItem
+        }
+        self.customPricings = cleanMap
     }
 
     /// 获取特定模型的匹配单价规则（具备智能别名归一化、层级化精准优先与前缀模糊回退）

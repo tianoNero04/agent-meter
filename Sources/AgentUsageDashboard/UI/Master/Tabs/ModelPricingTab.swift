@@ -157,23 +157,10 @@ struct ModelPricingTab: View {
 
                     VStack(spacing: 8) {
                         ForEach(displayedPricings) { pricingItem in
-                            let isObserved = isLocallyObserved(pricingItem.modelName)
                             HStack {
-                                HStack(spacing: 6) {
-                                    Text(pricingItem.modelName)
-                                        .font(.system(size: 12, weight: isObserved ? .bold : .medium, design: .monospaced))
-                                        .foregroundStyle(isObserved ? AppTheme.primaryText : AppTheme.secondaryText)
-
-                                    if isObserved {
-                                        Text("本机使用")
-                                            .font(.system(size: 9, weight: .bold))
-                                            .foregroundStyle(AppTheme.codex)
-                                            .padding(.horizontal, 5)
-                                            .padding(.vertical, 1.5)
-                                            .background(AppTheme.codex.opacity(0.15))
-                                            .clipShape(RoundedRectangle(cornerRadius: 3))
-                                    }
-                                }
+                                Text(pricingItem.modelName)
+                                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                                    .foregroundStyle(AppTheme.primaryText)
 
                                 Spacer()
 
@@ -187,11 +174,7 @@ struct ModelPricingTab: View {
                             .padding(.vertical, 7)
                             .background(
                                 RoundedRectangle(cornerRadius: 4)
-                                    .fill(isObserved ? AppTheme.surface : AppTheme.background.opacity(0.6))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 4)
-                                            .stroke(isObserved ? AppTheme.codex.opacity(0.35) : Color.clear, lineWidth: 0.75)
-                                    )
+                                    .fill(AppTheme.background.opacity(0.6))
                             )
                         }
                     }
@@ -217,50 +200,28 @@ struct ModelPricingTab: View {
         }
     }
 
-    /// 本地会话中已观测到的所有模型名称集合（含原名与归一化别名）
-    private var observedModelNames: Set<String> {
-        var names = Set<String>()
-        for provider in Provider.allCases {
-            let snap = model.snapshot(for: provider)
-            for m in snap.localModels {
-                let clean = m.model.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-                names.insert(clean)
-                names.insert(DefaultModelPricings.normalizeModelName(clean))
-            }
-        }
-        return names
-    }
-
-    private func isLocallyObserved(_ name: String) -> Bool {
-        let clean = name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalized = DefaultModelPricings.normalizeModelName(clean)
-        return observedModelNames.contains(clean) || observedModelNames.contains(normalized)
-    }
-
-    /// 聚合用于展示的全部模型列表（内置预设 + 自定义/同步模型，去重并优先置顶本机使用的模型）
+    /// 聚合用于展示的全部模型列表（基于规范名称严格去重，纯净展示且按字母排序）
     private var displayedPricings: [ModelPricing] {
         var map: [String: ModelPricing] = [:]
 
-        // 先加入内置预设
+        // 1. 先加入内置规范预设
         for p in DefaultModelPricings.presets {
-            map[p.modelName.lowercased()] = p
+            let canonical = DefaultModelPricings.normalizeModelName(p.modelName)
+            var item = p
+            item.modelName = canonical
+            map[canonical] = item
         }
 
-        // 再用自定义/最新同步覆盖
-        for (key, p) in preferences.customPricings {
-            map[key.lowercased()] = p
+        // 2. 再用自定义/最新同步覆盖（键同样使用规范名称）
+        for (_, p) in preferences.customPricings {
+            let canonical = DefaultModelPricings.normalizeModelName(p.modelName)
+            var item = p
+            item.modelName = canonical
+            map[canonical] = item
         }
 
-        let list = Array(map.values)
-
-        return list.sorted { a, b in
-            let aObserved = isLocallyObserved(a.modelName)
-            let bObserved = isLocallyObserved(b.modelName)
-
-            if aObserved != bObserved {
-                return aObserved && !bObserved
-            }
-            return a.modelName.localizedStandardCompare(b.modelName) == .orderedAscending
+        return Array(map.values).sorted { a, b in
+            a.modelName.localizedStandardCompare(b.modelName) == .orderedAscending
         }
     }
 

@@ -95,33 +95,30 @@ final class ModelPricingSyncService: Sendable {
 
         var updated = 0
         for item in fetchedPricings {
-            let key = item.modelName.lowercased()
-            // 如果不存在或价格有差异，更新它
-            if preferences.customPricings[key] != item {
-                preferences.customPricings[key] = item
-                updated += 1
-            }
+            // 严格以规范化模型标识为主键
+            let canonicalKey = DefaultModelPricings.normalizeModelName(item.modelName)
+            var canonicalItem = item
+            canonicalItem.modelName = canonicalKey
 
-            // 同时也保存组织别名版本（如 kimi-code/k3-256k）
-            let normalized = DefaultModelPricings.normalizeModelName(key)
-            if normalized != key && preferences.customPricings[normalized] != item {
-                var normalizedItem = item
-                normalizedItem.modelName = normalized
-                preferences.customPricings[normalized] = normalizedItem
+            // 如果不存在或价格有差异，更新规范条目
+            if preferences.customPricings[canonicalKey] != canonicalItem {
+                preferences.customPricings[canonicalKey] = canonicalItem
+                updated += 1
             }
         }
 
+        preferences.sanitizeCustomPricings()
         store.save(preferences)
         return (updated, fetchedPricings.count)
     }
 
-    /// 解析 models.dev 的 JSON 字典结构
+    /// 解析 models.dev 的 JSON 字典结构，并基于规范化模型 ID 严格去重
     func parseModels(from data: Data) throws -> [ModelPricing] {
         guard let jsonObject = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw ModelPricingSyncError.parsingFailure("无法将返回数据反序列化为 JSON 字典")
         }
 
-        var results: [ModelPricing] = []
+        var resultsMap: [String: ModelPricing] = [:]
 
         for (providerKey, providerVal) in jsonObject {
             guard let providerDict = providerVal as? [String: Any],
@@ -146,18 +143,29 @@ final class ModelPricingSyncService: Sendable {
                 // 只有至少配置了 input 或 output 的模型才计入
                 guard input > 0 || output > 0 else { continue }
 
+                // 统一归一化为规范标准 ID（例如 k3-256k -> kimi-k3）以彻底避免重复
+                let canonicalId = DefaultModelPricings.normalizeModelName(modelId)
+
                 let pricing = ModelPricing(
-                    modelName: modelId,
+                    modelName: canonicalId,
                     inputPerMillion: input,
                     cacheReadPerMillion: cacheRead,
                     outputPerMillion: output,
                     baseCurrency: .usd
                 )
-                results.append(pricing)
+
+                // 若尚未存在，或当前数据更详细（如包含 cacheRead），写入/更新
+                if let existing = resultsMap[canonicalId] {
+                    if existing.cacheReadPerMillion == 0 && cacheRead > 0 {
+                        resultsMap[canonicalId] = pricing
+                    }
+                } else {
+                    resultsMap[canonicalId] = pricing
+                }
             }
         }
 
-        return results
+        return Array(resultsMap.values)
     }
 
     private func parseCostValue(_ value: Any?) -> Double {

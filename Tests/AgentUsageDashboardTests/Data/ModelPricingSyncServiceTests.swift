@@ -66,7 +66,7 @@ final class ModelPricingSyncServiceTests: XCTestCase {
         XCTAssertEqual(luna?.cacheReadPerMillion, 0.02)
         XCTAssertEqual(luna?.outputPerMillion, 1.2)
 
-        let k3 = pricings.first(where: { $0.modelName == "k3-256k" })
+        let k3 = pricings.first(where: { $0.modelName == "kimi-k3" })
         XCTAssertNotNil(k3)
         XCTAssertEqual(k3?.inputPerMillion, 3.0)
     }
