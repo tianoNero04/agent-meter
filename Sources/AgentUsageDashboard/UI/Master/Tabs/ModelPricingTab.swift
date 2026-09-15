@@ -156,25 +156,42 @@ struct ModelPricingTab: View {
                     }
 
                     VStack(spacing: 8) {
-                        ForEach(DefaultModelPricings.presets) { preset in
+                        ForEach(displayedPricings) { pricingItem in
+                            let isObserved = isLocallyObserved(pricingItem.modelName)
                             HStack {
-                                Text(preset.modelName)
-                                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                                    .foregroundStyle(AppTheme.primaryText)
+                                HStack(spacing: 6) {
+                                    Text(pricingItem.modelName)
+                                        .font(.system(size: 12, weight: isObserved ? .bold : .medium, design: .monospaced))
+                                        .foregroundStyle(isObserved ? AppTheme.primaryText : AppTheme.secondaryText)
+
+                                    if isObserved {
+                                        Text("本机使用")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundStyle(AppTheme.codex)
+                                            .padding(.horizontal, 5)
+                                            .padding(.vertical, 1.5)
+                                            .background(AppTheme.codex.opacity(0.15))
+                                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                                    }
+                                }
 
                                 Spacer()
 
                                 HStack(spacing: 12) {
-                                    pricingTag(label: "入", amount: preset.inputPerMillion, symbol: preset.baseCurrency.symbol)
-                                    pricingTag(label: "缓", amount: preset.cacheReadPerMillion, symbol: preset.baseCurrency.symbol, isCache: true)
-                                    pricingTag(label: "出", amount: preset.outputPerMillion, symbol: preset.baseCurrency.symbol)
+                                    pricingTag(label: "入", amount: pricingItem.inputPerMillion, symbol: pricingItem.baseCurrency.symbol)
+                                    pricingTag(label: "缓", amount: pricingItem.cacheReadPerMillion, symbol: pricingItem.baseCurrency.symbol, isCache: true)
+                                    pricingTag(label: "出", amount: pricingItem.outputPerMillion, symbol: pricingItem.baseCurrency.symbol)
                                 }
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
                             .background(
                                 RoundedRectangle(cornerRadius: 4)
-                                    .fill(AppTheme.background.opacity(0.6))
+                                    .fill(isObserved ? AppTheme.surface : AppTheme.background.opacity(0.6))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .stroke(isObserved ? AppTheme.codex.opacity(0.35) : Color.clear, lineWidth: 0.75)
+                                    )
                             )
                         }
                     }
@@ -195,6 +212,56 @@ struct ModelPricingTab: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
         }
+        .onAppear {
+            preferences = store.load()
+        }
+    }
+
+    /// 本地会话中已观测到的所有模型名称集合（含原名与归一化别名）
+    private var observedModelNames: Set<String> {
+        var names = Set<String>()
+        for provider in Provider.allCases {
+            let snap = model.snapshot(for: provider)
+            for m in snap.localModels {
+                let clean = m.model.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                names.insert(clean)
+                names.insert(DefaultModelPricings.normalizeModelName(clean))
+            }
+        }
+        return names
+    }
+
+    private func isLocallyObserved(_ name: String) -> Bool {
+        let clean = name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized = DefaultModelPricings.normalizeModelName(clean)
+        return observedModelNames.contains(clean) || observedModelNames.contains(normalized)
+    }
+
+    /// 聚合用于展示的全部模型列表（内置预设 + 自定义/同步模型，去重并优先置顶本机使用的模型）
+    private var displayedPricings: [ModelPricing] {
+        var map: [String: ModelPricing] = [:]
+
+        // 先加入内置预设
+        for p in DefaultModelPricings.presets {
+            map[p.modelName.lowercased()] = p
+        }
+
+        // 再用自定义/最新同步覆盖
+        for (key, p) in preferences.customPricings {
+            map[key.lowercased()] = p
+        }
+
+        let list = Array(map.values)
+
+        return list.sorted { a, b in
+            let aObserved = isLocallyObserved(a.modelName)
+            let bObserved = isLocallyObserved(b.modelName)
+
+            if aObserved != bObserved {
+                return aObserved && !bObserved
+            }
+            return a.modelName.localizedStandardCompare(b.modelName) == .orderedAscending
+        }
     }
 
     private func pricingTag(label: String, amount: Double, symbol: String, isCache: Bool = false) -> some View {
@@ -213,15 +280,22 @@ struct ModelPricingTab: View {
         store.save(preferences)
     }
 
+    /// 触发真实在线同步并即时刷新界面
     private func checkForUpdates() {
         isCheckingUpdates = true
         updateMessage = nil
 
-        // 模拟按需拉取轻量静态字典（仅几 KB，平时零开销）
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 600_000_000)
-            isCheckingUpdates = false
-            updateMessage = "✓ 已完成最新模型定价同步：全量 11 款主流模型定价已是最新版本"
+            do {
+                let result = try await ModelPricingSyncService.shared.syncAndSave(store: store)
+                self.preferences = store.load()
+                self.isCheckingUpdates = false
+                let timeStr = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
+                self.updateMessage = "✓ 已成功同步最新模型定价：已拉取 \(result.totalCount) 款模型 (更新 \(result.updatedCount) 项，时间 \(timeStr))"
+            } catch {
+                self.isCheckingUpdates = false
+                self.updateMessage = "⚠ 同步 models.dev 异常：\(error.localizedDescription)，已保留本地最新预设费率"
+            }
         }
     }
 }

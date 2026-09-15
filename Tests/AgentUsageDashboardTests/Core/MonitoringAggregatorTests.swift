@@ -138,4 +138,43 @@ final class MonitoringAggregatorTests: XCTestCase {
         )
         XCTAssertEqual(monthlyBuckets.count, 3, "月粒度应聚合 3 个月")
     }
+
+    func testDynamicModelPricingWeightedCostCalculation() {
+        let aggregator = MonitoringAggregator(calendar: calendar, now: fixedNow)
+        let pricing = PricingPreferences(targetCurrency: .cny, usdToCnyRate: 7.20)
+
+        let day0 = calendar.startOfDay(for: fixedNow)
+
+        // 构造带有实际模型统计的快照（Luna 模型，0.2 USD 入 / 1.2 USD 出）
+        let lunaUsage = TokenUsage(input: 1_000_000, cachedInput: 0, output: 1_000_000)
+        let codexSnapshot = ProviderSnapshot(
+            provider: .codex,
+            status: .connected,
+            account: nil,
+            windows: [],
+            accountUsage: nil,
+            localTokenUsage: lunaUsage,
+            localDailyBuckets: [DailyTokenBucket(startDate: day0, tokens: 2_000_000)],
+            localModels: [
+                ModelUsage(model: "gpt-5.6-luna", usage: lunaUsage)
+            ],
+            source: "test",
+            collectedAt: fixedNow,
+            errorMessage: nil
+        )
+
+        let buckets = aggregator.aggregateBuckets(
+            codex: codexSnapshot,
+            kimi: .empty(.kimiCode),
+            granularity: .daily,
+            pricing: pricing
+        )
+
+        let todayBucket = buckets.last!
+        let codexItem = todayBucket.providerBreakdown.first(where: { $0.provider == .codex })!
+
+        // Luna 1M input ($0.2) + 1M output ($1.2) = $1.40 USD -> 1.40 * 7.2 = 10.08 CNY
+        // 若旧逻辑硬编码 gpt-4o，则为 (2.5 + 10.0) * 7.2 = 90.0 CNY
+        XCTAssertEqual(codexItem.estimatedCost, 10.08, accuracy: 0.05, "动态模型加权计费应精确匹配 luna 模型实际费率 10.08 CNY")
+    }
 }

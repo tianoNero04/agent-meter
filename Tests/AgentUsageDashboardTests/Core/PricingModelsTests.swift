@@ -77,6 +77,39 @@ final class PricingModelsTests: XCTestCase {
         XCTAssertEqual(unknownPricing.modelName, "default")
     }
 
+    func testModelNameNormalizationAnd2026Presets() {
+        let prefs = PricingPreferences()
+
+        // 1. 测试 Codex 2026 旗舰模型精准匹配与别名
+        let luna = prefs.pricing(for: "gpt-5.6-luna")
+        XCTAssertEqual(luna.inputPerMillion, 0.20)
+        XCTAssertEqual(luna.cacheReadPerMillion, 0.02)
+        XCTAssertEqual(luna.outputPerMillion, 1.20)
+
+        let sol = prefs.pricing(for: "gpt-5.6-sol")
+        XCTAssertEqual(sol.inputPerMillion, 4.00)
+
+        let autoReview = prefs.pricing(for: "codex-auto-review")
+        XCTAssertEqual(autoReview.inputPerMillion, 0.75)
+
+        // 2. 测试 Kimi Code 组织前缀去除与别名映射
+        let k3_256k = prefs.pricing(for: "kimi-code/k3-256k")
+        XCTAssertEqual(k3_256k.inputPerMillion, 3.00)
+
+        let k3_raw = prefs.pricing(for: "k3")
+        XCTAssertEqual(k3_raw.inputPerMillion, 3.00)
+
+        let coding = prefs.pricing(for: "kimi-code/kimi-for-coding")
+        XCTAssertEqual(coding.inputPerMillion, 0.95)
+
+        // 3. 测试 Anthropic 与 DeepSeek 2026 最新模型
+        let sonnet45 = prefs.pricing(for: "claude-sonnet-4-5")
+        XCTAssertEqual(sonnet45.inputPerMillion, 3.00)
+
+        let deepseekV4 = prefs.pricing(for: "deepseek-v4-pro")
+        XCTAssertEqual(deepseekV4.inputPerMillion, 0.435)
+    }
+
     func testPricingStoreSaveAndLoadRoundtrip() {
         let suite = "test.pricing.store.\(UUID().uuidString)"
         let store = UserDefaultsPricingSettingsStore(suiteName: suite)

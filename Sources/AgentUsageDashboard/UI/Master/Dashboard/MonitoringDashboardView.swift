@@ -105,6 +105,9 @@ struct MonitoringDashboardView: View {
         }
         .background(Theme.canvasBg.ignoresSafeArea())
         .preferredColorScheme(.dark)
+        .onAppear {
+            pricing = pricingStore.load()
+        }
     }
 
     // MARK: - 1. 顶栏刊头
@@ -390,11 +393,8 @@ struct MonitoringDashboardView: View {
         let codexRatio = total > 0 ? Double(totalCodex) / Double(total) : 0.0
         let kimiRatio = total > 0 ? Double(totalKimi) / Double(total) : 0.0
 
-        let codexPricing = pricing.pricing(for: "gpt-4o")
-        let kimiPricing = pricing.pricing(for: "moonshot-v1-8k")
-
-        let codexCost = codexPricing.calculateCost(for: codexSnapshot.localTokenUsage, targetCurrency: pricing.targetCurrency, exchangeRate: pricing.usdToCnyRate)
-        let kimiCost = kimiPricing.calculateCost(for: kimiSnapshot.localTokenUsage, targetCurrency: pricing.targetCurrency, exchangeRate: pricing.usdToCnyRate)
+        let codexCost = calculateSnapshotCost(snapshot: codexSnapshot, defaultModel: "gpt-5.6-luna")
+        let kimiCost = calculateSnapshotCost(snapshot: kimiSnapshot, defaultModel: "kimi-k3")
 
         return [
             ProviderBreakdownItem(
@@ -422,6 +422,28 @@ struct MonitoringDashboardView: View {
                 estimatedCost: kimiCost
             )
         ]
+    }
+
+    /// 计算指定 Provider 快照的实际多模型加权花费
+    private func calculateSnapshotCost(snapshot: ProviderSnapshot, defaultModel: String) -> Double {
+        if !snapshot.localModels.isEmpty {
+            var totalCost = 0.0
+            for modelItem in snapshot.localModels {
+                let p = pricing.pricing(for: modelItem.model)
+                totalCost += p.calculateCost(
+                    for: modelItem.usage,
+                    targetCurrency: pricing.targetCurrency,
+                    exchangeRate: pricing.usdToCnyRate
+                )
+            }
+            return totalCost
+        }
+        let fallback = pricing.pricing(for: defaultModel)
+        return fallback.calculateCost(
+            for: snapshot.localTokenUsage,
+            targetCurrency: pricing.targetCurrency,
+            exchangeRate: pricing.usdToCnyRate
+        )
     }
 
     private func tableRowView(row: ProviderBreakdownItem) -> some View {

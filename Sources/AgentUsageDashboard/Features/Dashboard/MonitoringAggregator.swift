@@ -208,14 +208,15 @@ struct MonitoringAggregator: Sendable {
         let total = codexTokens + kimiTokens
         var items: [ProviderBreakdownItem] = []
 
-        // Codex 细分项
+        // Codex 细分项：基于本地真实模型加权计算成本（默认旗舰为 gpt-5.6-luna）
         let codexRatio = total > 0 ? Double(codexTokens) / Double(total) : 0.0
         let codexUsage = prorateUsage(snapshotUsage: codexSnapshot.localTokenUsage, totalTokens: codexTokens)
-        let codexPricing = pricing.pricing(for: "gpt-4o")
-        let codexCost = codexPricing.calculateCost(
-            for: codexUsage,
-            targetCurrency: pricing.targetCurrency,
-            exchangeRate: pricing.usdToCnyRate
+        let codexCost = calculateEstimatedCost(
+            tokens: codexTokens,
+            usage: codexUsage,
+            snapshot: codexSnapshot,
+            defaultModel: "gpt-5.6-luna",
+            pricing: pricing
         )
         let codexRequests = max(codexTokens > 0 ? 1 : 0, Int(round(Double(codexTokens) / 1200.0)))
 
@@ -234,14 +235,15 @@ struct MonitoringAggregator: Sendable {
             )
         )
 
-        // Kimi 细分项
+        // Kimi 细分项：基于本地真实模型加权计算成本（默认旗舰为 kimi-k3）
         let kimiRatio = total > 0 ? Double(kimiTokens) / Double(total) : 0.0
         let kimiUsage = prorateUsage(snapshotUsage: kimiSnapshot.localTokenUsage, totalTokens: kimiTokens)
-        let kimiPricing = pricing.pricing(for: "moonshot-v1-8k")
-        let kimiCost = kimiPricing.calculateCost(
-            for: kimiUsage,
-            targetCurrency: pricing.targetCurrency,
-            exchangeRate: pricing.usdToCnyRate
+        let kimiCost = calculateEstimatedCost(
+            tokens: kimiTokens,
+            usage: kimiUsage,
+            snapshot: kimiSnapshot,
+            defaultModel: "kimi-k3",
+            pricing: pricing
         )
         let kimiRequests = max(kimiTokens > 0 ? 1 : 0, Int(round(Double(kimiTokens) / 1500.0)))
 
@@ -261,6 +263,47 @@ struct MonitoringAggregator: Sendable {
         )
 
         return items
+    }
+
+    /// 计算指定 Provider 在特定 Token 消耗下的加权预估费用（优先考虑本地已观测到的多模型实际混合比例）
+    private func calculateEstimatedCost(
+        tokens: Int,
+        usage: TokenUsage,
+        snapshot: ProviderSnapshot,
+        defaultModel: String,
+        pricing: PricingPreferences
+    ) -> Double {
+        guard tokens > 0 else { return 0.0 }
+
+        // 1. 若有本地多模型实际统计，使用加权综合单价换算
+        if !snapshot.localModels.isEmpty {
+            var totalObservedCost = 0.0
+            var totalObservedTokens = 0
+
+            for modelItem in snapshot.localModels {
+                let p = pricing.pricing(for: modelItem.model)
+                let cost = p.calculateCost(
+                    for: modelItem.usage,
+                    targetCurrency: pricing.targetCurrency,
+                    exchangeRate: pricing.usdToCnyRate
+                )
+                totalObservedCost += cost
+                totalObservedTokens += modelItem.usage.total
+            }
+
+            if totalObservedTokens > 0 {
+                let unitCost = totalObservedCost / Double(totalObservedTokens)
+                return Double(tokens) * unitCost
+            }
+        }
+
+        // 2. 若暂无模型级明细，采用当前供应商的主流基线模型估算
+        let fallbackPricing = pricing.pricing(for: defaultModel)
+        return fallbackPricing.calculateCost(
+            for: usage,
+            targetCurrency: pricing.targetCurrency,
+            exchangeRate: pricing.usdToCnyRate
+        )
     }
 
     /// 根据该 Provider 本地历史总体的 Input/Cache/Output 构成比例，按分桶总 Tokens 等比估算分桶内的组成

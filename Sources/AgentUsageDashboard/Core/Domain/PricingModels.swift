@@ -85,28 +85,49 @@ struct ModelPricing: Codable, Identifiable, Hashable, Sendable {
     }
 }
 
-/// 默认内置的主流模型官方定价预设字典
+/// 默认内置的主流模型官方定价预设字典（已对齐 models.dev 2026 年最新官方真实费率，单位：USD/1M Tokens）
 enum DefaultModelPricings {
     static let presets: [ModelPricing] = [
-        // OpenAI 系列
-        ModelPricing(modelName: "gpt-4o", inputPerMillion: 2.50, cacheReadPerMillion: 1.25, outputPerMillion: 10.00),
-        ModelPricing(modelName: "gpt-4o-mini", inputPerMillion: 0.15, cacheReadPerMillion: 0.075, outputPerMillion: 0.60),
+        // MARK: - OpenAI Codex 核心旗舰系列 (2026 主力)
+        ModelPricing(modelName: "gpt-5.6-luna", inputPerMillion: 0.20, cacheReadPerMillion: 0.02, outputPerMillion: 1.20),
+        ModelPricing(modelName: "gpt-5.6-terra", inputPerMillion: 2.00, cacheReadPerMillion: 0.20, outputPerMillion: 12.00),
+        ModelPricing(modelName: "gpt-5.6", inputPerMillion: 4.00, cacheReadPerMillion: 0.40, outputPerMillion: 20.00),
+        ModelPricing(modelName: "gpt-5.6-sol", inputPerMillion: 4.00, cacheReadPerMillion: 0.40, outputPerMillion: 20.00),
+        ModelPricing(modelName: "gpt-5.5", inputPerMillion: 5.00, cacheReadPerMillion: 0.50, outputPerMillion: 30.00),
+        ModelPricing(modelName: "gpt-5.4-mini", inputPerMillion: 0.75, cacheReadPerMillion: 0.075, outputPerMillion: 4.50),
+        ModelPricing(modelName: "codex-auto-review", inputPerMillion: 0.75, cacheReadPerMillion: 0.075, outputPerMillion: 4.50),
         ModelPricing(modelName: "o3-mini", inputPerMillion: 1.10, cacheReadPerMillion: 0.55, outputPerMillion: 4.40),
         ModelPricing(modelName: "o1", inputPerMillion: 15.00, cacheReadPerMillion: 7.50, outputPerMillion: 60.00),
+        ModelPricing(modelName: "gpt-4o", inputPerMillion: 2.50, cacheReadPerMillion: 1.25, outputPerMillion: 10.00),
+        ModelPricing(modelName: "gpt-4o-mini", inputPerMillion: 0.15, cacheReadPerMillion: 0.075, outputPerMillion: 0.60),
 
-        // Anthropic Claude 系列
-        ModelPricing(modelName: "claude-3-5-sonnet", inputPerMillion: 3.00, cacheReadPerMillion: 0.30, outputPerMillion: 15.00),
-        ModelPricing(modelName: "claude-3-5-haiku", inputPerMillion: 0.80, cacheReadPerMillion: 0.08, outputPerMillion: 4.00),
-        ModelPricing(modelName: "claude-3-opus", inputPerMillion: 15.00, cacheReadPerMillion: 1.50, outputPerMillion: 75.00),
-
-        // Kimi 系列（按人民币换算官方标准或官方 API 费率）
+        // MARK: - Kimi (Moonshot AI & Kimi Code 核心系列)
+        ModelPricing(modelName: "kimi-k3", inputPerMillion: 3.00, cacheReadPerMillion: 0.30, outputPerMillion: 15.00),
+        ModelPricing(modelName: "k3-256k", inputPerMillion: 3.00, cacheReadPerMillion: 0.30, outputPerMillion: 15.00),
+        ModelPricing(modelName: "k3", inputPerMillion: 3.00, cacheReadPerMillion: 0.30, outputPerMillion: 15.00),
+        ModelPricing(modelName: "kimi-code/k3-256k", inputPerMillion: 3.00, cacheReadPerMillion: 0.30, outputPerMillion: 15.00),
+        ModelPricing(modelName: "kimi-code/k3", inputPerMillion: 3.00, cacheReadPerMillion: 0.30, outputPerMillion: 15.00),
+        ModelPricing(modelName: "kimi-k2.7-code", inputPerMillion: 0.95, cacheReadPerMillion: 0.19, outputPerMillion: 4.00),
+        ModelPricing(modelName: "kimi-code/kimi-for-coding", inputPerMillion: 0.95, cacheReadPerMillion: 0.19, outputPerMillion: 4.00),
+        ModelPricing(modelName: "kimi-k2.7-code-highspeed", inputPerMillion: 1.90, cacheReadPerMillion: 0.38, outputPerMillion: 8.00),
+        ModelPricing(modelName: "kimi-code/kimi-for-coding-highspeed", inputPerMillion: 1.90, cacheReadPerMillion: 0.38, outputPerMillion: 8.00),
         ModelPricing(modelName: "moonshot-v1-8k", inputPerMillion: 1.67, cacheReadPerMillion: 0.28, outputPerMillion: 1.67, baseCurrency: .cny),
         ModelPricing(modelName: "moonshot-v1-32k", inputPerMillion: 3.33, cacheReadPerMillion: 0.56, outputPerMillion: 3.33, baseCurrency: .cny),
         ModelPricing(modelName: "kimi-latest", inputPerMillion: 2.00, cacheReadPerMillion: 0.30, outputPerMillion: 2.00, baseCurrency: .cny),
 
-        // DeepSeek 系列
+        // MARK: - Anthropic Claude 系列
+        ModelPricing(modelName: "claude-sonnet-4-5", inputPerMillion: 3.00, cacheReadPerMillion: 0.30, outputPerMillion: 15.00),
+        ModelPricing(modelName: "claude-3-5-sonnet", inputPerMillion: 3.00, cacheReadPerMillion: 0.30, outputPerMillion: 15.00),
+        ModelPricing(modelName: "claude-3-5-haiku", inputPerMillion: 0.80, cacheReadPerMillion: 0.08, outputPerMillion: 4.00),
+        ModelPricing(modelName: "claude-3-opus", inputPerMillion: 15.00, cacheReadPerMillion: 1.50, outputPerMillion: 75.00),
+
+        // MARK: - DeepSeek 系列
+        ModelPricing(modelName: "deepseek-v4-pro", inputPerMillion: 0.435, cacheReadPerMillion: 0.003625, outputPerMillion: 0.87),
         ModelPricing(modelName: "deepseek-chat", inputPerMillion: 0.14, cacheReadPerMillion: 0.014, outputPerMillion: 0.28),
-        ModelPricing(modelName: "deepseek-reasoner", inputPerMillion: 0.55, cacheReadPerMillion: 0.14, outputPerMillion: 2.19)
+        ModelPricing(modelName: "deepseek-reasoner", inputPerMillion: 0.55, cacheReadPerMillion: 0.14, outputPerMillion: 2.19),
+
+        // MARK: - xAI 系列
+        ModelPricing(modelName: "grok-4.5", inputPerMillion: 2.00, cacheReadPerMillion: 0.30, outputPerMillion: 6.00)
     ]
 
     /// 兜底未知模型的默认单价（采用温和的 gpt-4o-mini / 轻量级标准估算）
@@ -117,6 +138,36 @@ enum DefaultModelPricings {
         outputPerMillion: 3.00,
         baseCurrency: .usd
     )
+
+    /// 智能归一化模型标识符，去除组织前缀与常见后缀别名
+    static func normalizeModelName(_ rawName: String) -> String {
+        var clean = rawName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // 1. 去除常见组织前缀
+        let prefixes = ["kimi-code/", "openai/", "anthropic/", "deepseek/", "xai/", "google/"]
+        for p in prefixes {
+            if clean.hasPrefix(p) {
+                clean = String(clean.dropFirst(p.count))
+                break
+            }
+        }
+
+        // 2. 映射特定别名到官方模型 ID
+        switch clean {
+        case "gpt-5.6-sol":
+            return "gpt-5.6"
+        case "codex-auto-review":
+            return "gpt-5.4-mini"
+        case "k3-256k", "k3":
+            return "kimi-k3"
+        case "kimi-for-coding":
+            return "kimi-k2.7-code"
+        case "kimi-for-coding-highspeed":
+            return "kimi-k2.7-code-highspeed"
+        default:
+            return clean
+        }
+    }
 }
 
 /// 用户全局模型计费偏好设置值对象
@@ -138,21 +189,39 @@ struct PricingPreferences: Codable, Equatable, Sendable {
         self.customPricings = customPricings
     }
 
-    /// 获取特定模型的匹配单价规则（优先用户自定义，其次内置预设，最后兜底）
+    /// 获取特定模型的匹配单价规则（具备智能别名归一化、层级化精准优先与前缀模糊回退）
     func pricing(for modelName: String) -> ModelPricing {
         let cleanName = modelName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized = DefaultModelPricings.normalizeModelName(cleanName)
 
-        // 1. 查找精确自定义
-        if let custom = customPricings[cleanName] {
+        // 1. 查找精确自定义匹配（原名或归一化名）
+        if let custom = customPricings[cleanName] ?? customPricings[normalized] {
             return custom
         }
 
-        // 2. 模糊匹配内置预设
-        if let preset = DefaultModelPricings.presets.first(where: { cleanName.contains($0.modelName) || $0.modelName.contains(cleanName) }) {
+        // 2. 查找内置预设的精确匹配（原名）
+        if let preset = DefaultModelPricings.presets.first(where: { $0.modelName.lowercased() == cleanName }) {
             return preset
         }
 
-        // 3. 兜底
+        // 3. 查找内置预设的归一化名精确匹配
+        if let preset = DefaultModelPricings.presets.first(where: { $0.modelName.lowercased() == normalized }) {
+            return preset
+        }
+
+        // 4. 前缀与包含模糊匹配（优先匹配字符更长、更精准的预设）
+        let matches = DefaultModelPricings.presets.filter { preset in
+            let pName = preset.modelName.lowercased()
+            return cleanName.hasPrefix(pName) ||
+                   normalized.hasPrefix(pName) ||
+                   pName.hasPrefix(normalized) ||
+                   cleanName.contains(pName)
+        }
+        if let bestMatch = matches.max(by: { $0.modelName.count < $1.modelName.count }) {
+            return bestMatch
+        }
+
+        // 5. 兜底
         return DefaultModelPricings.fallback
     }
 }
