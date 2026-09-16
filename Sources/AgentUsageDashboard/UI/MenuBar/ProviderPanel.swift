@@ -179,10 +179,12 @@ struct TokenUsageCard: View {
 
     private var totalTokens: Int { snapshot.accountUsage?.lifetimeTokens ?? snapshot.localTokenUsage.total }
     private var buckets: [DailyTokenBucket] {
-        let rawBuckets = snapshot.provider == .codex
-            ? ((snapshot.accountUsage?.dailyBuckets?.isEmpty == false ? snapshot.accountUsage?.dailyBuckets : nil) ?? snapshot.localDailyBuckets)
-            : snapshot.localDailyBuckets
-        return recentSevenDayBuckets(rawBuckets)
+        // 优先尝试获取服务端账号 7 日分桶；若服务端分桶无数据或近 7 天滞后为空，自动平滑回退到本地日志分桶
+        let accountBuckets = recentSevenDayBuckets(snapshot.accountUsage?.dailyBuckets ?? [])
+        if !accountBuckets.isEmpty {
+            return accountBuckets
+        }
+        return recentSevenDayBuckets(snapshot.localDailyBuckets)
     }
 
     var body: some View {

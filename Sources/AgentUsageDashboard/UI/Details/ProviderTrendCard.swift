@@ -3,7 +3,14 @@ import Charts
 
 struct ProviderTrendCard: View {
     let snapshot: ProviderSnapshot
-    private var buckets: [DailyTokenBucket] { recentSevenDayBuckets(snapshot.provider == .codex ? (snapshot.accountUsage?.dailyBuckets ?? []) : snapshot.localDailyBuckets) }
+    private var buckets: [DailyTokenBucket] {
+        // 优先尝试获取服务端账号 7 日分桶；若为空或滞后，自动平滑回退到本地日志分桶
+        let accountBuckets = recentSevenDayBuckets(snapshot.accountUsage?.dailyBuckets ?? [])
+        if !accountBuckets.isEmpty {
+            return accountBuckets
+        }
+        return recentSevenDayBuckets(snapshot.localDailyBuckets)
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(snapshot.provider.displayName).font(.headline)

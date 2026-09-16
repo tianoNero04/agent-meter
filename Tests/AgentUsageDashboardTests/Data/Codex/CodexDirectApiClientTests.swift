@@ -104,4 +104,37 @@ final class CodexDirectApiClientTests: XCTestCase {
         XCTAssertEqual(token, "disk-token-789")
         XCTAssertNil(accountId)
     }
+
+    /// 验证 wham/profiles/me 接口返回报文的解析逻辑（总 Token、峰值与每日分桶）
+    func testParseProfileUsageExtractsStatsAndDailyBuckets() throws {
+        let jsonString = """
+        {
+          "profile": {
+            "id": "user-123"
+          },
+          "stats": {
+            "lifetime_tokens": 5980521960,
+            "peak_daily_tokens": 318998552,
+            "daily_usage_buckets": [
+              {
+                "start_date": "2026-09-14",
+                "tokens": 161320230
+              },
+              {
+                "start_date": "2026-09-15",
+                "tokens": 51026399
+              }
+            ]
+          }
+        }
+        """
+        let data = jsonString.data(using: .utf8)!
+        let usage = try XCTUnwrap(CodexDirectApiClient.parseProfileUsage(data: data))
+
+        XCTAssertEqual(usage.lifetimeTokens, 5980521960)
+        XCTAssertEqual(usage.peakDailyTokens, 318998552)
+        XCTAssertEqual(usage.dailyBuckets?.count, 2)
+        XCTAssertEqual(usage.dailyBuckets?.first?.tokens, 161320230)
+        XCTAssertEqual(usage.dailyBuckets?.last?.tokens, 51026399)
+    }
 }

@@ -37,26 +37,22 @@ struct CodexDirectApiClient {
     /// 是否允许访问系统 Keychain（在测试使用临时目录时为 false，避免读取真实用户钥匙串）
     var allowKeychain: Bool = true
 
-    /// 执行直接获取官方额度数据
+    /// 执行直接获取官方额度与用量数据
     func fetch() async throws -> CodexAccountData {
         // 1. 读取并解析 OAuth 凭据
         let creds = try readCredentials()
 
-        // 2. 构造直接请求
-        var request = URLRequest(url: URL(string: "https://chatgpt.com/backend-api/wham/usage")!)
-        request.httpMethod = "GET"
-        request.timeoutInterval = 10.0
-        request.setValue("Bearer \(creds.accessToken)", forHTTPHeaderField: "Authorization")
-        request.setValue("codex-cli", forHTTPHeaderField: "User-Agent")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        if let accountId = creds.accountId, !accountId.isEmpty {
-            request.setValue(accountId, forHTTPHeaderField: "ChatGPT-Account-Id")
-        }
+        // 2. 构造两个并发请求：wham/usage（额度窗口）与 wham/profiles/me（总 Token 与每日趋势分桶）
+        let usageRequest = makeRequest(path: "/backend-api/wham/usage", creds: creds)
+        let profileRequest = makeRequest(path: "/backend-api/wham/profiles/me", creds: creds)
 
-        // 3. 执行异步 HTTPS 网络请求
-        let (data, response): (Data, URLResponse)
+        // 3. 并发执行 HTTPS 网络请求（profile 请求平滑降级，不阻断核心额度查询）
+        async let usageTask: (Data, URLResponse) = session.data(for: usageRequest)
+        async let profileTask: (Data, URLResponse)? = try? session.data(for: profileRequest)
+
+        let (usageData, usageResponse): (Data, URLResponse)
         do {
-            (data, response) = try await session.data(for: request)
+            (usageData, usageResponse) = try await usageTask
         } catch {
             if (error as NSError).code == NSURLErrorCancelled {
                 throw error // 响应取消事件，支持面板关闭时及时终止
@@ -64,7 +60,7 @@ struct CodexDirectApiClient {
             throw CodexDirectApiError.networkError(error.localizedDescription)
         }
 
-        guard let httpResponse = response as? HTTPURLResponse else {
+        guard let httpResponse = usageResponse as? HTTPURLResponse else {
             throw CodexDirectApiError.invalidResponseData
         }
 
@@ -74,12 +70,37 @@ struct CodexDirectApiClient {
         }
 
         guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? ""
+            let errorBody = String(data: usageData, encoding: .utf8) ?? ""
             throw CodexDirectApiError.httpError(httpResponse.statusCode, errorBody)
         }
 
-        // 5. 解析响应数据
-        return try Self.parseResponse(data: data)
+        // 5. 解析额度数据
+        var accountData = try Self.parseResponse(data: usageData)
+
+        // 6. 解析 Token 用量与 7 日历史分桶（来自官方 /wham/profiles/me 接口）
+        if let (profileData, profileResponse) = await profileTask,
+           let httpProfile = profileResponse as? HTTPURLResponse,
+           httpProfile.statusCode == 200 {
+            if let tokenUsage = Self.parseProfileUsage(data: profileData) {
+                accountData.usage = tokenUsage
+            }
+        }
+
+        return accountData
+    }
+
+    /// 构造官方后端请求通用模板
+    private func makeRequest(path: String, creds: (accessToken: String, accountId: String?)) -> URLRequest {
+        var request = URLRequest(url: URL(string: "https://chatgpt.com\(path)")!)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 10.0
+        request.setValue("Bearer \(creds.accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("codex-cli", forHTTPHeaderField: "User-Agent")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let accountId = creds.accountId, !accountId.isEmpty {
+            request.setValue(accountId, forHTTPHeaderField: "ChatGPT-Account-Id")
+        }
+        return request
     }
 
     /// 读取 Codex 凭据（双通道：Keychain 优先，auth.json 兜底）
@@ -201,6 +222,40 @@ struct CodexDirectApiClient {
             usedPercent: used,
             windowMinutes: windowMinutes,
             resetsAt: resetsAt
+        )
+    }
+
+    /// 解析 wham/profiles/me 接口返回的 stats 统计数据（总 Token、峰值与每日分桶）
+    static func parseProfileUsage(data: Data) -> AccountTokenUsage? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let stats = json["stats"] as? [String: Any] else {
+            return nil
+        }
+
+        let lifetimeTokens = (stats["lifetime_tokens"] as? NSNumber)?.intValue
+        let peakDailyTokens = (stats["peak_daily_tokens"] as? NSNumber)?.intValue
+
+        let isoFormatter = ISO8601DateFormatter()
+        let dayFormatter = DateFormatter()
+        dayFormatter.calendar = Calendar(identifier: .gregorian)
+        dayFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dayFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+        dayFormatter.dateFormat = "yyyy-MM-dd"
+
+        let rawBuckets = (stats["daily_usage_buckets"] as? [[String: Any]]) ?? []
+        let buckets = rawBuckets.compactMap { bucket -> DailyTokenBucket? in
+            guard let dateString = (bucket["start_date"] as? String) ?? (bucket["startDate"] as? String),
+                  let date = isoFormatter.date(from: dateString) ?? dayFormatter.date(from: dateString) else {
+                return nil
+            }
+            let tokens = (bucket["tokens"] as? NSNumber)?.intValue ?? 0
+            return DailyTokenBucket(startDate: date, tokens: tokens)
+        }
+
+        return AccountTokenUsage(
+            lifetimeTokens: lifetimeTokens,
+            peakDailyTokens: peakDailyTokens,
+            dailyBuckets: buckets
         )
     }
 }
