@@ -100,18 +100,11 @@ struct QuotaCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // 模块头部栏：索引号 + 刷新按钮
+            // 模块头部栏：标题 + 刷新按钮
             HStack(alignment: .center) {
-                HStack(spacing: 6) {
-                    Text("[02 // RATE.LIMITS]")
-                        .font(.system(size: 7, weight: .bold, design: .monospaced))
-                        .tracking(0.8)
-                        .foregroundStyle(AppTheme.secondaryText)
-                    Text("CAPACITY REGISTER")
-                        .font(.system(size: 8, weight: .bold, design: .monospaced))
-                        .tracking(0.5)
-                        .foregroundStyle(AppTheme.primaryText)
-                }
+                Text("剩余额度")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
                 Spacer()
 
                 // 校准/刷新触发按钮
