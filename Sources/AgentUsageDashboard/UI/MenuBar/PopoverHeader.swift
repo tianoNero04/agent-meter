@@ -18,23 +18,15 @@ struct PopoverHeader: View {
                 AgentMeterLogo()
                     .frame(width: 18, height: 18)
 
-                VStack(alignment: .leading, spacing: 0) {
-                    // 报头重字重大写标
-                    HStack(spacing: 3) {
-                        Text("AGENT")
-                            .font(.system(size: 10, weight: .heavy, design: .default))
-                        Text("METER")
-                            .font(.system(size: 10, weight: .heavy, design: .default))
-                    }
-                    .tracking(1.2)
-                    .foregroundStyle(AppTheme.primaryText)
-
-                    // 杂志期号与系统就绪指示
-                    Text("VOL.26 // SYS.OK")
-                        .font(.system(size: 6.5, weight: .medium, design: .monospaced))
-                        .tracking(0.8)
-                        .foregroundStyle(AppTheme.secondaryText)
+                // 报头重字重大写品牌标
+                HStack(spacing: 3) {
+                    Text("AGENT")
+                        .font(.system(size: 10.5, weight: .heavy, design: .default))
+                    Text("METER")
+                        .font(.system(size: 10.5, weight: .heavy, design: .default))
                 }
+                .tracking(1.2)
+                .foregroundStyle(AppTheme.primaryText)
             }
             .contentShape(Rectangle())
         }
