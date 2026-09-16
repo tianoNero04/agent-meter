@@ -502,21 +502,22 @@ struct ModelUsageTab: View {
     }
 
     // MARK: - 辅助工具
+    /// 识别模型归属的厂商名称
     private func detectProviderName(for modelName: String) -> String {
         let clean = modelName.lowercased()
-        if clean.hasPrefix("gpt-") || clean.hasPrefix("o1") || clean.hasPrefix("o3") {
+        if clean.contains("gpt") || clean.contains("o1") || clean.contains("o3") || clean.contains("codex") {
             return "OpenAI"
         }
-        if clean.hasPrefix("kimi-") || clean.hasPrefix("moonshot-") {
+        if clean.contains("kimi") || clean.contains("moonshot") {
             return "Moonshot"
         }
-        if clean.hasPrefix("claude-") {
+        if clean.contains("claude") {
             return "Anthropic"
         }
-        if clean.hasPrefix("deepseek-") {
+        if clean.contains("deepseek") {
             return "DeepSeek"
         }
-        if clean.hasPrefix("grok-") {
+        if clean.contains("grok") {
             return "xAI"
         }
         return "通用"
