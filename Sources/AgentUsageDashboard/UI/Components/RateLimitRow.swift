@@ -39,8 +39,9 @@ struct RateLimitRow: View {
                     .frame(width: 0.75, height: 26)
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("重置时间")
-                        .font(.system(size: 7.5, weight: .bold))
+                    Text("RESETS")
+                        .font(.system(size: 6.5, weight: .bold, design: .monospaced))
+                        .tracking(0.5)
                         .foregroundStyle(AppTheme.secondaryText)
                     Text(resetDateText(from: resetsAt))
                         .font(.system(size: 8, weight: .medium, design: .monospaced))
@@ -69,13 +70,12 @@ struct RateLimitRow: View {
         return "余 \(max(1, minutes))分"
     }
 
-    /// 额度窗口副标题本地化
     private var windowSubtitle: String {
         switch window.windowMinutes {
-        case 300: return "5小时额度"
-        case 10080: return "7天额度"
-        case let minutes?: return "\(minutes)分钟额度"
-        default: return "账户级额度"
+        case 300: return "LIMIT 05H"
+        case 10080: return "LIMIT 07D"
+        case let minutes?: return "LIMIT \(minutes)M"
+        default: return "ACCOUNT"
         }
     }
 }

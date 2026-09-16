@@ -53,10 +53,11 @@ struct ProviderHeroCard: View {
 
             Spacer()
 
-            // 订阅计划标签
+            // 工业风 Plan 架构标签
             VStack(alignment: .trailing, spacing: 2) {
-                Text("订阅计划")
-                    .font(.system(size: 8, weight: .bold))
+                Text("TIER // PLAN")
+                    .font(.system(size: 6.5, weight: .bold, design: .monospaced))
+                    .tracking(0.6)
                     .foregroundStyle(AppTheme.secondaryText)
                 Text(planLabel)
                     .font(.system(size: 13, weight: .heavy, design: .monospaced))
@@ -112,8 +113,9 @@ struct QuotaCard: View {
                         RefreshIconShape()
                             .fill(AppTheme.primaryText)
                             .frame(width: 8.5, height: 8.5)
-                        Text("刷新")
-                            .font(.system(size: 9, weight: .semibold))
+                        Text("CALIBRATE")
+                            .font(.system(size: 7, weight: .bold, design: .monospaced))
+                            .tracking(0.5)
                             .foregroundStyle(AppTheme.primaryText)
                     }
                     .padding(.horizontal, 6)
@@ -125,7 +127,7 @@ struct QuotaCard: View {
                     )
                 }
                 .buttonStyle(PressBounceButtonStyle())
-                .help("刷新账号服务端额度数据")
+                .help("刷新账号服务端额度数据 (Calibrate Quotas)")
             }
             .padding(.horizontal, 12)
             .frame(height: 28)
@@ -187,12 +189,14 @@ struct TokenUsageCard: View {
         VStack(alignment: .leading, spacing: 4) {
             // 模块索引行
             HStack {
-                Text("Token 账本")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(AppTheme.primaryText)
+                Text("[03 // TOKEN.LEDGER]")
+                    .font(.system(size: 7, weight: .bold, design: .monospaced))
+                    .tracking(0.8)
+                    .foregroundStyle(AppTheme.secondaryText)
                 Spacer()
-                Text("7 日动态趋势")
-                    .font(.system(size: 9.5, weight: .medium))
+                Text("7-DAY DYNAMICS")
+                    .font(.system(size: 6.5, weight: .medium, design: .monospaced))
+                    .tracking(0.5)
                     .foregroundStyle(AppTheme.tertiaryText)
             }
 
@@ -202,27 +206,28 @@ struct TokenUsageCard: View {
                     Text(formatCompactNumber(totalTokens))
                         .font(.system(size: 21, weight: .heavy, design: .monospaced))
                         .foregroundStyle(AppTheme.primaryText)
-                    Text("总算力消耗")
-                        .font(.system(size: 8.5, weight: .medium))
+                    Text("TOTAL COMPUTE")
+                        .font(.system(size: 6.5, weight: .bold, design: .monospaced))
+                        .tracking(0.6)
                         .foregroundStyle(AppTheme.secondaryText)
 
                     // 细分指示：当有缓存命中时显示 Cache Hit Rate；否则显示输入输出细分
                     if snapshot.localTokenUsage.cachedInput > 0 {
                         HStack(spacing: 3) {
-                            Text("缓存命中")
-                                .font(.system(size: 8, weight: .medium))
+                            Text("CACHE")
+                                .font(.system(size: 6.5, weight: .semibold, design: .monospaced))
                                 .foregroundStyle(AppTheme.secondaryText)
-                            Text("\(Int(round(snapshot.localTokenUsage.cacheHitRate * 100)))%")
-                                .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                            Text("\(Int(round(snapshot.localTokenUsage.cacheHitRate * 100)))% HIT")
+                                .font(.system(size: 6.5, weight: .bold, design: .monospaced))
                                 .foregroundStyle(AppTheme.codex)
                         }
                     } else if snapshot.localTokenUsage.input > 0 || snapshot.localTokenUsage.output > 0 {
                         HStack(spacing: 3) {
-                            Text("输入 \(formatCompactNumber(snapshot.localTokenUsage.input))")
+                            Text("IN \(formatCompactNumber(snapshot.localTokenUsage.input))")
                             Text("·")
-                            Text("输出 \(formatCompactNumber(snapshot.localTokenUsage.output))")
+                            Text("OUT \(formatCompactNumber(snapshot.localTokenUsage.output))")
                         }
-                        .font(.system(size: 8, weight: .medium))
+                        .font(.system(size: 6.5, weight: .medium, design: .monospaced))
                         .foregroundStyle(AppTheme.secondaryText)
                         .lineLimit(1)
                     }
@@ -240,8 +245,8 @@ struct TokenUsageCard: View {
                         Image(systemName: "chart.xyaxis.line")
                             .font(.system(size: 14, weight: .regular))
                             .foregroundStyle(AppTheme.tertiaryText)
-                        Text("暂无趋势数据")
-                            .font(.system(size: 9, weight: .medium))
+                        Text("[NO DATA POINTS IN RANGE]")
+                            .font(.system(size: 7, weight: .medium, design: .monospaced))
                             .foregroundStyle(AppTheme.tertiaryText)
                     }
                     .frame(maxWidth: .infinity)
