@@ -31,59 +31,45 @@ struct ProviderHeroCard: View {
     let snapshot: ProviderSnapshot
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // 杂志索引行
-            HStack {
-                Text("[01 // AGENT.IDENT]")
-                    .font(.system(size: 7, weight: .bold, design: .monospaced))
+        // 核心主体：图标、名称、状态与 Plan 档次
+        HStack(spacing: 12) {
+            // 几何图标方块
+            ProviderIconTile(provider: snapshot.provider, size: 44)
+
+            // 粗壮无衬线标题与状态码
+            VStack(alignment: .leading, spacing: 3) {
+                Text(snapshot.provider.displayName.uppercased())
+                    .font(.system(size: 16, weight: .heavy, design: .default))
                     .tracking(0.8)
-                    .foregroundStyle(AppTheme.secondaryText)
-                Spacer()
-                Text("ENGINE ARCHITECTURE")
-                    .font(.system(size: 6.5, weight: .medium, design: .monospaced))
-                    .tracking(0.5)
-                    .foregroundStyle(AppTheme.tertiaryText)
+                    .foregroundStyle(AppTheme.primaryText)
+                StatusBadge(status: snapshot.status)
+                if let error = snapshot.errorMessage {
+                    Text("PREV.DATA · \(error)")
+                        .font(.system(size: 8, weight: .medium, design: .monospaced))
+                        .foregroundStyle(AppTheme.warning)
+                        .lineLimit(1)
+                }
             }
 
-            HStack(spacing: 12) {
-                // 几何图标方块
-                ProviderIconTile(provider: snapshot.provider, size: 44)
+            Spacer()
 
-                // 粗壮无衬线标题与状态码
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(snapshot.provider.displayName.uppercased())
-                        .font(.system(size: 16, weight: .heavy, design: .default))
-                        .tracking(0.8)
-                        .foregroundStyle(AppTheme.primaryText)
-                    StatusBadge(status: snapshot.status)
-                    if let error = snapshot.errorMessage {
-                        Text("PREV.DATA · \(error)")
-                            .font(.system(size: 8, weight: .medium, design: .monospaced))
-                            .foregroundStyle(AppTheme.warning)
-                            .lineLimit(1)
-                    }
-                }
-
-                Spacer()
-
-                // 工业风 Plan 架构标签
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("TIER // PLAN")
-                        .font(.system(size: 6.5, weight: .bold, design: .monospaced))
-                        .tracking(0.6)
-                        .foregroundStyle(AppTheme.secondaryText)
-                    Text(planLabel)
-                        .font(.system(size: 13, weight: .heavy, design: .monospaced))
-                        .tracking(0.5)
-                        .foregroundStyle(AppTheme.primaryText)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3.5)
-                        .background(AppTheme.elevated, in: RoundedRectangle(cornerRadius: 3, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                                .stroke(AppTheme.hairlineBright, lineWidth: 0.75)
-                        )
-                }
+            // 工业风 Plan 架构标签
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("TIER // PLAN")
+                    .font(.system(size: 6.5, weight: .bold, design: .monospaced))
+                    .tracking(0.6)
+                    .foregroundStyle(AppTheme.secondaryText)
+                Text(planLabel)
+                    .font(.system(size: 13, weight: .heavy, design: .monospaced))
+                    .tracking(0.5)
+                    .foregroundStyle(AppTheme.primaryText)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3.5)
+                    .background(AppTheme.elevated, in: RoundedRectangle(cornerRadius: 3, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 3, style: .continuous)
+                            .stroke(AppTheme.hairlineBright, lineWidth: 0.75)
+                    )
             }
         }
         .padding(.horizontal, 12)
