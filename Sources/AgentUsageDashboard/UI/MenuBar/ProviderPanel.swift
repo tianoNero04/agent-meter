@@ -187,16 +187,14 @@ struct TokenUsageCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            // 模块索引行
+            // 模块索引行（汉化标题与趋势标签，样式与剩余额度保持一致）
             HStack {
-                Text("[03 // TOKEN.LEDGER]")
-                    .font(.system(size: 7, weight: .bold, design: .monospaced))
-                    .tracking(0.8)
-                    .foregroundStyle(AppTheme.secondaryText)
+                Text("Token 统计")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
                 Spacer()
-                Text("7-DAY DYNAMICS")
-                    .font(.system(size: 6.5, weight: .medium, design: .monospaced))
-                    .tracking(0.5)
+                Text("7 日动态趋势")
+                    .font(.system(size: 9.5, weight: .medium))
                     .foregroundStyle(AppTheme.tertiaryText)
             }
 
