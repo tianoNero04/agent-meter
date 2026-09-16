@@ -39,12 +39,7 @@ struct MasterDashboardView: View {
                     case .alerts:
                         AlertsSettingsTab(model: model)
                     case .models:
-                        ScrollView {
-                            ModelUsageTab(model: model)
-                                .padding(.top, 44)
-                                .padding(.horizontal, 24)
-                                .padding(.bottom, 24)
-                        }
+                        ModelUsageTab(model: model)
                     case .savings:
                         PromptSavingsTab(model: model)
                     }
