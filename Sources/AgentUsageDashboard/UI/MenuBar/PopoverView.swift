@@ -13,20 +13,15 @@ struct PopoverView: View {
     @State private var slideEdge: Edge = .trailing
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            // 左侧外凸书签栏（悬浮外挂于主卡片外缘）
-            ProviderBookmarkTabs(
-                model: model,
-                selectedProvider: selectedProvider
-            ) { provider in
-                selectProvider(provider)
-            }
-            .zIndex(1)
+        ZStack {
+            // 纯粹深墨黑底色（消退背景噪声）
+            AppTheme.background.ignoresSafeArea()
 
-            // 右侧主面板网格卡片
             VStack(spacing: 0) {
-                // 顶部杂志报头（Masthead）通栏（含品牌与右上角控制中心按钮）
-                PopoverTopBar(openWindow: openWindow)
+                // 顶部杂志报头（Masthead）通栏（含品牌、选项卡与右上角面板图标）
+                PopoverTopBar(model: model, selection: $selectedSection, openWindow: openWindow) { provider in
+                    selectProvider(provider)
+                }
 
                 // 报头下方通栏 0.75pt 精确发丝基准线
                 Rectangle()
@@ -44,21 +39,10 @@ struct PopoverView: View {
                 .padding(.top, 10)
                 .padding(.bottom, 17)
             }
-            .frame(width: 390, height: 425)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(AppTheme.background)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(AppTheme.hairline, lineWidth: 0.75)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .shadow(color: Color.black.opacity(0.45), radius: 14, x: 0, y: 6)
         }
-        .frame(width: 425, height: 425)
+        .frame(width: 390, height: 425)
         .preferredColorScheme(.dark)
-        // 捕获菜单栏弹窗的宿主 NSWindow，彻底剥离系统级浅色外框与毛玻璃背景，实现左侧外凸书签的纯粹透明悬浮
+        // 捕获菜单栏弹窗的宿主 NSWindow，以便打开主页面时可精确瞬时收起
         .background(
             WindowAccessor { window in
                 MenuBarDismissManager.shared.register(window: window)
@@ -109,9 +93,12 @@ struct PopoverView: View {
     }
 }
 
-/// 杂志报头（Masthead Top Bar）：左侧刊头品牌标示，右上角面板图标启动完整菜单
+/// 杂志报头（Masthead Top Bar）：左侧刊头品牌标示，右侧平铺瑞士选项卡，右上角面板图标启动完整菜单
 struct PopoverTopBar: View {
+    @ObservedObject var model: DashboardModel
+    @Binding var selection: PopoverSection
     let openWindow: OpenWindowAction
+    let onSelect: (Provider) -> Void
 
     var body: some View {
         HStack(spacing: 0) {
@@ -120,14 +107,24 @@ struct PopoverTopBar: View {
 
             Spacer(minLength: 10)
 
-            // 右上角面板图标：点击后启动统一控制中心总窗口
-            PanelMenuButton {
-                // 预先声明窗口开启，防止弹窗收起过程误切回 accessory 模式引起 Dock 图标闪烁
-                DockPolicyManager.shared.windowWillOpen("master")
-                NSApp.activate(ignoringOtherApps: true)
-                openWindow(id: "master")
-                // 打开主页面后，自动关闭当前菜单栏小窗
-                MenuBarDismissManager.shared.dismiss()
+            // 选项卡切换区与完整菜单面板图标
+            HStack(spacing: 8) {
+                ProviderNavigationBar(model: model, selection: $selection, onSelect: onSelect)
+
+                // 极简 0.75pt 垂直微发丝分割线
+                Rectangle()
+                    .fill(AppTheme.hairline)
+                    .frame(width: 0.75, height: 16)
+
+                // 右上角面板图标：点击后启动统一控制中心总窗口
+                PanelMenuButton {
+                    // 预先声明窗口开启，防止弹窗收起过程误切回 accessory 模式引起 Dock 图标闪烁
+                    DockPolicyManager.shared.windowWillOpen("master")
+                    NSApp.activate(ignoringOtherApps: true)
+                    openWindow(id: "master")
+                    // 打开主页面后，自动关闭当前菜单栏小窗
+                    MenuBarDismissManager.shared.dismiss()
+                }
             }
         }
         .padding(.horizontal, 14)
@@ -163,7 +160,7 @@ struct PanelMenuButton: View {
     }
 }
 
-/// 用于在 SwiftUI 视图生命周期内捕获其宿主 NSWindow，并消除系统浅色毛玻璃与外圈边框的桥接组件
+/// 用于在 SwiftUI 视图生命周期内捕获其宿主 NSWindow 的轻量级桥接组件
 private struct WindowAccessor: NSViewRepresentable {
     let onWindow: (NSWindow) -> Void
 
@@ -171,7 +168,6 @@ private struct WindowAccessor: NSViewRepresentable {
         let view = NSView()
         DispatchQueue.main.async {
             if let window = view.window {
-                configureTransparentWindow(window)
                 onWindow(window)
             }
         }
@@ -181,37 +177,8 @@ private struct WindowAccessor: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {
         DispatchQueue.main.async {
             if let window = nsView.window {
-                configureTransparentWindow(window)
                 onWindow(window)
             }
-        }
-    }
-
-    private func configureTransparentWindow(_ window: NSWindow) {
-        // 强制采用暗色外观，避免浅色模式下系统渲染浅灰外框
-        window.appearance = NSAppearance(named: .darkAqua)
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        // 禁用系统大矩形整体阴影，改由 SwiftUI 卡片层自主精确投射自然拟物阴影
-        window.hasShadow = false
-
-        // 递归剥离系统托管的 VisualEffect 毛玻璃和浅色图层背景
-        if let contentView = window.contentView {
-            stripBackground(contentView)
-            if let superview = contentView.superview {
-                stripBackground(superview)
-            }
-        }
-    }
-
-    private func stripBackground(_ view: NSView) {
-        view.wantsLayer = true
-        view.layer?.backgroundColor = NSColor.clear.cgColor
-        if let effectView = view as? NSVisualEffectView {
-            effectView.isHidden = true
-        }
-        for subview in view.subviews {
-            stripBackground(subview)
         }
     }
 }
