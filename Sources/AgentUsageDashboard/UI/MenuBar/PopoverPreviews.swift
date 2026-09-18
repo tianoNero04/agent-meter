@@ -78,7 +78,7 @@ enum PreviewModels {
 
 #Preview("菜单栏弹窗") {
     PopoverView(model: PreviewModels.dashboard())
-        .frame(width: 390, height: 425)
+        .frame(width: 425, height: 425)
 }
 
 private struct NavBarPreviewHost: View {
@@ -86,12 +86,9 @@ private struct NavBarPreviewHost: View {
 
     var body: some View {
         PopoverTopBar(
-            model: PreviewModels.dashboard(),
-            selection: .constant(.provider(.codex)),
-            openWindow: openWindow,
-            onSelect: { _ in }
+            openWindow: openWindow
         )
-        .frame(width: 366, height: 48.5)
+        .frame(width: 390, height: 42)
         .padding()
         .background(Color.black)
     }
