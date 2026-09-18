@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 瑞士风格 Provider 网格导航栏组件：呈现清晰、高对比度的出版物选项卡
+/// 瑞士风格 Provider 图标导航栏组件：以紧凑高质感的微缩图标呈现提供者切换
 struct ProviderNavigationBar: View {
     @ObservedObject var model: DashboardModel
     @Binding var selection: PopoverSection
@@ -8,45 +8,66 @@ struct ProviderNavigationBar: View {
     @Namespace private var tabNamespace
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
             ForEach(model.navigation.visibleProviders, id: \.self) { provider in
-                NavigationTab(
-                    title: provider.displayName.uppercased(),
+                ProviderIconTab(
+                    provider: provider,
                     isSelected: selection == .provider(provider),
                     namespace: tabNamespace
                 ) {
                     onSelect(provider)
                 }
             }
-            Spacer()
         }
         .animation(.easeInOut(duration: 0.20), value: selection)
     }
 }
 
-/// 瑞士网格单项标签
-struct NavigationTab: View {
-    let title: String
+/// 单项微缩图标切换按钮
+struct ProviderIconTab: View {
+    let provider: Provider
     let isSelected: Bool
     let namespace: Namespace.ID
     let action: () -> Void
 
+    @State private var isHovered = false
+
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.system(size: 10.5, weight: isSelected ? .bold : .medium, design: .default))
-                .tracking(0.6)
-                .foregroundStyle(isSelected ? AppTheme.primaryText : AppTheme.secondaryText)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5.5)
-                .background {
-                    if isSelected {
-                        SelectedTabChip()
-                            .matchedGeometryEffect(id: "selectedTab", in: namespace)
-                    }
+            ZStack {
+                // 选中态背景底衬与蓝色基准线
+                if isSelected {
+                    SelectedTabChip()
+                        .matchedGeometryEffect(id: "selectedTab", in: namespace)
+                } else if isHovered {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(AppTheme.surface.opacity(0.9))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .stroke(AppTheme.hairline.opacity(0.6), lineWidth: 0.75)
+                        )
                 }
+
+                // Provider 专属高清图标
+                if let icon = BundleImages.providerIcon(for: provider) {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 14, height: 14)
+                        .opacity(isSelected ? 1.0 : (isHovered ? 0.9 : 0.55))
+                } else {
+                    Image(systemName: provider.iconName)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(isSelected ? AppTheme.primaryText : AppTheme.secondaryText)
+                        .opacity(isSelected ? 1.0 : (isHovered ? 0.9 : 0.55))
+                }
+            }
+            .frame(width: 26, height: 24)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .help(provider.displayName)
     }
 }
 
@@ -62,8 +83,9 @@ struct SelectedTabChip: View {
             .overlay(alignment: .bottom) {
                 Rectangle()
                     .fill(AppTheme.codex)
-                    .frame(height: 2)
-                    .padding(.horizontal, 6)
+                    .frame(height: 1.75)
+                    .padding(.horizontal, 4)
             }
     }
 }
+
