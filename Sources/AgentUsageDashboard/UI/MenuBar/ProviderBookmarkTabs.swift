@@ -164,6 +164,7 @@ struct ProviderBookmarkItem: View {
             .frame(width: currentWidth, height: currentHeight)
             // 选中项向右延伸 1pt，精确遮盖主面板左边框
             .offset(x: isSelected ? 1 : 0)
+            .shadow(color: Color.black.opacity(isSelected ? 0.35 : 0.2), radius: 6, x: -2, y: 2)
             .contentShape(BookmarkTabShape(cornerRadius: 6))
         }
         .buttonStyle(.plain)

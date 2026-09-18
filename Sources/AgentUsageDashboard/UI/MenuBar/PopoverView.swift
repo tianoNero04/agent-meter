@@ -54,15 +54,13 @@ struct PopoverView: View {
                     .stroke(AppTheme.hairline, lineWidth: 0.75)
             )
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .shadow(color: Color.black.opacity(0.45), radius: 14, x: 0, y: 6)
         }
         .frame(width: 425, height: 425)
         .preferredColorScheme(.dark)
-        // 捕获菜单栏弹窗的宿主 NSWindow，以便打开主页面时可精确瞬时收起，并启用透明窗口特性
+        // 捕获菜单栏弹窗的宿主 NSWindow，彻底剥离系统级浅色外框与毛玻璃背景，实现左侧外凸书签的纯粹透明悬浮
         .background(
             WindowAccessor { window in
-                window.isOpaque = false
-                window.backgroundColor = .clear
-                window.hasShadow = true
                 MenuBarDismissManager.shared.register(window: window)
             }
         )
@@ -165,7 +163,7 @@ struct PanelMenuButton: View {
     }
 }
 
-/// 用于在 SwiftUI 视图生命周期内捕获其宿主 NSWindow 的轻量级桥接组件
+/// 用于在 SwiftUI 视图生命周期内捕获其宿主 NSWindow，并消除系统浅色毛玻璃与外圈边框的桥接组件
 private struct WindowAccessor: NSViewRepresentable {
     let onWindow: (NSWindow) -> Void
 
@@ -173,6 +171,7 @@ private struct WindowAccessor: NSViewRepresentable {
         let view = NSView()
         DispatchQueue.main.async {
             if let window = view.window {
+                configureTransparentWindow(window)
                 onWindow(window)
             }
         }
@@ -182,8 +181,37 @@ private struct WindowAccessor: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {
         DispatchQueue.main.async {
             if let window = nsView.window {
+                configureTransparentWindow(window)
                 onWindow(window)
             }
+        }
+    }
+
+    private func configureTransparentWindow(_ window: NSWindow) {
+        // 强制采用暗色外观，避免浅色模式下系统渲染浅灰外框
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        // 禁用系统大矩形整体阴影，改由 SwiftUI 卡片层自主精确投射自然拟物阴影
+        window.hasShadow = false
+
+        // 递归剥离系统托管的 VisualEffect 毛玻璃和浅色图层背景
+        if let contentView = window.contentView {
+            stripBackground(contentView)
+            if let superview = contentView.superview {
+                stripBackground(superview)
+            }
+        }
+    }
+
+    private func stripBackground(_ view: NSView) {
+        view.wantsLayer = true
+        view.layer?.backgroundColor = NSColor.clear.cgColor
+        if let effectView = view as? NSVisualEffectView {
+            effectView.isHidden = true
+        }
+        for subview in view.subviews {
+            stripBackground(subview)
         }
     }
 }
