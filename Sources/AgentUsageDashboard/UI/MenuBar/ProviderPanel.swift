@@ -287,7 +287,7 @@ struct QuotaEmptyState: View {
                     Text("ACCOUNT QUOTA")
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundStyle(AppTheme.primaryText)
-                    Text(provider == .kimiCode ? "CLI ONLY // LOCAL MODE" : "UNRESOLVED // READY")
+                    Text(quotaSubtitle)
                         .font(.system(size: 7, weight: .medium, design: .monospaced))
                         .foregroundStyle(AppTheme.secondaryText)
                 }
@@ -301,11 +301,32 @@ struct QuotaEmptyState: View {
                 .fill(Color.white.opacity(0.08))
                 .frame(height: 4)
 
-            Text(provider == .kimiCode ? "Kimi CLI 适配器待接入，当前仅记录本地日志算力。" : "刷新时从 Codex App Server 提取配额，当前尚未获取。")
+            Text(quotaDescription)
                 .font(.system(size: 7.5, design: .monospaced))
                 .foregroundStyle(AppTheme.secondaryText)
                 .lineLimit(1)
         }
         .padding(.vertical, 8)
+    }
+
+    /// 状态标签副标题
+    private var quotaSubtitle: String {
+        switch provider {
+        case .codex: return "UNRESOLVED // READY"
+        case .kimiCode: return "CLI ONLY // LOCAL MODE"
+        default: return "AGENT READY // LOCAL MODE"
+        }
+    }
+
+    /// 额度说明描述文本
+    private var quotaDescription: String {
+        switch provider {
+        case .codex:
+            return "刷新时从官方通道提取配额，当前尚未获取。"
+        case .kimiCode:
+            return "Kimi 适配器接入就绪，当前记录本地通道算力。"
+        default:
+            return "\(provider.displayName) 本地运行环境已就绪，当前处于活动状态。"
+        }
     }
 }

@@ -10,6 +10,7 @@ enum BundleImages {
         switch provider {
         case .codex: return providerIconCodex
         case .kimiCode: return providerIconKimi
+        default: return nil // 无位图资源时回退至高清矢量 SF Symbol
         }
     }
     static let logoWhite: NSImage? = load("AgentMeterLogoWhite")

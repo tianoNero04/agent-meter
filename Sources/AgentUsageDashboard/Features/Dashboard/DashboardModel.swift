@@ -3,15 +3,38 @@ import Combine
 
 /// 应用状态与用例编排：发布 Provider 快照、刷新状态、历史和错误，
 /// 通过注入的 adapter 刷新、通过 repository 持久化。
+/// 应用状态与用例编排：发布 Provider 快照、刷新状态、历史和错误，
+/// 通过注入的 adapter 刷新、通过 repository 持久化。
 @MainActor
 final class DashboardModel: ObservableObject {
-    @Published private(set) var codex: ProviderSnapshot = .empty(.codex)
-    @Published private(set) var kimi: ProviderSnapshot = .empty(.kimiCode)
+    /// 各 Provider 快照字典存储，支持动态接入扩展 Agent 快照
+    @Published private(set) var providerSnapshots: [Provider: ProviderSnapshot] = [
+        .codex: .empty(.codex),
+        .kimiCode: .empty(.kimiCode)
+    ]
+
+    /// 兼容旧属性调用的 Codex 快照快捷访问
+    var codex: ProviderSnapshot {
+        get { providerSnapshots[.codex] ?? .empty(.codex) }
+        set { providerSnapshots[.codex] = newValue }
+    }
+
+    /// 兼容旧属性调用的 Kimi 快照快捷访问
+    var kimi: ProviderSnapshot {
+        get { providerSnapshots[.kimiCode] ?? .empty(.kimiCode) }
+        set { providerSnapshots[.kimiCode] = newValue }
+    }
+
     @Published private(set) var navigation: ProviderNavigationState
     @Published private(set) var history: [DashboardSnapshot] = []
     @Published private(set) var isRefreshing = false
     @Published private(set) var lastRefresh: Date?
     @Published private(set) var lastError: String?
+
+    // MARK: - 本地环境与工具链检测状态
+    @Published private(set) var localTools: [LocalToolEnvironment] = []
+    @Published private(set) var isDetectingEnv = false
+    private let environmentInspector = LocalEnvironmentInspector()
 
     private let repository: SnapshotRepository
     private let settingsStore: ProviderSettingsStore
@@ -37,14 +60,14 @@ final class DashboardModel: ObservableObject {
     }
 
     func snapshot(for provider: Provider) -> ProviderSnapshot {
-        switch provider {
-        case .codex: return codex
-        case .kimiCode: return kimi
+        if let snap = providerSnapshots[provider] {
+            return snap
         }
+        return .empty(provider)
     }
 
     private var currentSnapshots: [Provider: ProviderSnapshot] {
-        [.codex: codex, .kimiCode: kimi]
+        providerSnapshots
     }
 
     func selectProvider(_ provider: Provider) {
@@ -75,6 +98,8 @@ final class DashboardModel: ObservableObject {
         watchers.forEach { $0.start() }
 
         refresh(includeAccount: false)
+        // 启动时在后台静默执行一次本地环境检测，实时同步实际已安装的 Provider 列表
+        inspectEnvironment()
     }
 
     func stop() {
@@ -174,9 +199,41 @@ final class DashboardModel: ObservableObject {
     }
 
     private func store(_ snapshot: ProviderSnapshot) {
-        switch snapshot.provider {
-        case .codex: codex = snapshot
-        case .kimiCode: kimi = snapshot
+        providerSnapshots[snapshot.provider] = snapshot
+    }
+
+    /// 触发单次全量本地环境与工具链检测，将检测到的安装状态同步至导航与快照字典
+    func inspectEnvironment() {
+        guard !isDetectingEnv else { return }
+        isDetectingEnv = true
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let tools = await self.environmentInspector.inspectAllTools()
+            self.localTools = tools
+
+            // 筛选出本机已检测到安装的有效 Provider
+            var detected: Set<Provider> = []
+            for tool in tools where tool.isInstalled {
+                if let provider = Provider(toolId: tool.id) {
+                    detected.insert(provider)
+                }
+            }
+
+            // 更新 navigation 状态中实际检测到的 Provider 列表
+            self.navigation.updateDetectedProviders(detected)
+
+            // 为检测到已安装的 Provider 初始化就绪快照（若尚未存在）
+            for provider in detected {
+                if self.providerSnapshots[provider] == nil {
+                    var emptySnap = ProviderSnapshot.empty(provider)
+                    emptySnap.status = .connected
+                    emptySnap.source = "local-detected"
+                    self.providerSnapshots[provider] = emptySnap
+                }
+            }
+
+            self.isDetectingEnv = false
         }
     }
 

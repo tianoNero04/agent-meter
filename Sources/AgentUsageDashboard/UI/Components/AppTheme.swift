@@ -34,7 +34,25 @@ enum AppTheme {
 }
 
 extension Provider {
-    var iconName: String { self == .codex ? "terminal.fill" : "moon.stars.fill" }
-    // 统一遵循 AGENTS.md 约定：所有 Provider 共用固定蓝 AppTheme.codex
+    /// 各提供商在 UI 中展示的高清 SF Symbol 矢量图标
+    var iconName: String {
+        switch self {
+        case .codex: return "terminal.fill"
+        case .kimiCode: return "sparkles"
+        case .antigravity: return "atom"
+        case .claude: return "apple.terminal.fill"
+        case .cursor: return "cursorarrow.rays"
+        case .vscode: return "chevron.left.forwardslash.chevron.right"
+        case .grok: return "bolt.fill"
+        case .opencode: return "curlybraces"
+        case .openclaw: return "wrench.and.screwdriver.fill"
+        case .hermes: return "paperplane.fill"
+        case .pi: return "circle.hexagongrid.fill"
+        case .ollama: return "cpu"
+        }
+    }
+
+    /// 统一遵循 AGENTS.md 约定：所有 Provider 共用固定蓝 AppTheme.codex
     var accentColor: Color { AppTheme.codex }
 }
+

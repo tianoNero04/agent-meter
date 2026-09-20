@@ -7,7 +7,7 @@ struct ProviderPreferences: Equatable {
     var selectedProvider: Provider?
 
     init(
-        enabledProviders: Set<Provider> = Set(Provider.allCases),
+        enabledProviders: Set<Provider> = Set(Provider.coreProviders),
         selectedProvider: Provider? = .codex
     ) {
         self.enabledProviders = enabledProviders

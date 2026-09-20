@@ -14,7 +14,8 @@ final class ProviderSettingsStoreTests: XCTestCase {
 
         let preferences = store.load()
 
-        XCTAssertEqual(preferences.enabledProviders, Set(Provider.allCases))
+        // 偏好设置未初始化时默认启用内置核心提供商（Codex 与 Kimi Code）
+        XCTAssertEqual(preferences.enabledProviders, Set(Provider.coreProviders))
         XCTAssertNil(preferences.selectedProvider)
     }
 

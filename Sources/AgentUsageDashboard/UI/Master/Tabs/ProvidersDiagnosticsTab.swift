@@ -7,21 +7,17 @@ struct ProvidersDiagnosticsTab: View {
 
     @State private var isTesting = false
     @State private var diagnosticResults: [DiagnosticResult] = []
-    @State private var isDetectingEnv = false
-    @State private var toolEnvironments: [LocalToolEnvironment] = []
-    /// 已启用通道诊断的检测 Agent 集合（默认包含所有已探测到的工具）
-    @State private var enabledAgentIds: Set<String> = [
-        "antigravity", "claude", "cursor", "vscode", "grok", "opencode", "openclaw", "hermes", "pi", "ollama"
-    ]
 
     private let diagnosticsService = NetworkDiagnosticsService()
-    private let environmentInspector = LocalEnvironmentInspector()
 
-    /// 本地已检测到安装的额外 Agent（排除已内置在核心模型中的 codex 和 kimi）
-    private var detectedExtraAgents: [LocalToolEnvironment] {
-        toolEnvironments.filter { tool in
-            tool.isInstalled && tool.id != "codex" && tool.id != "kimi"
-        }
+    /// 本地工具环境列表（直接订阅 model.localTools）
+    private var toolEnvironments: [LocalToolEnvironment] {
+        model.localTools
+    }
+
+    /// 本地所有已检测到安装的工具链环境（直接响应 model.localTools）
+    private var detectedInstalledTools: [LocalToolEnvironment] {
+        model.localTools.filter(\.isInstalled)
     }
 
     init(model: DashboardModel, latencyBadge: Binding<String?>) {
@@ -84,14 +80,25 @@ struct ProvidersDiagnosticsTab: View {
                     .disabled(isTesting)
                 }
 
-                // 服务商与 Agent 通道状态列表
+                // 服务商与 Agent 通道状态列表（所有卡片严格绑定 model.navigation 开关与浮窗联动）
                 VStack(spacing: 12) {
-                    providerCard(for: .codex, title: "Codex (OpenAI)", credentialHint: "读取 Keychain 或 ~/.codex/auth.json")
-                    providerCard(for: .kimiCode, title: "Kimi Code (Moonshot)", credentialHint: "读取 ~/.kimi-code/credentials/kimi-code.json")
-
-                    // 动态加入检测到的本地 Agent（如 Google Antigravity, Claude Code, Cursor 等）
-                    ForEach(detectedExtraAgents) { agent in
-                        detectedAgentCard(for: agent)
+                    if detectedInstalledTools.isEmpty {
+                        // 环境检测尚未就绪时兜底显示核心提供商卡片
+                        unifiedProviderCard(for: .codex, name: "Codex CLI", vendor: "OpenAI", version: nil, location: "读取 Keychain 或 ~/.codex/auth.json", iconName: "terminal.fill")
+                        unifiedProviderCard(for: .kimiCode, name: "Kimi Code", vendor: "Moonshot AI", version: nil, location: "读取 ~/.kimi-code/credentials/kimi-code.json", iconName: "sparkles")
+                    } else {
+                        ForEach(detectedInstalledTools) { tool in
+                            if let provider = Provider(toolId: tool.id) {
+                                unifiedProviderCard(
+                                    for: provider,
+                                    name: tool.name,
+                                    vendor: tool.vendor,
+                                    version: tool.version,
+                                    location: tool.locationPath ?? tool.statusDescription,
+                                    iconName: tool.iconName
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -176,68 +183,35 @@ struct ProvidersDiagnosticsTab: View {
         }
         .onAppear {
             if toolEnvironments.isEmpty {
-                runEnvironmentInspection()
+                model.inspectEnvironment()
             }
         }
     }
 
-    /// 服务商状态配置卡片
-    private func providerCard(for provider: Provider, title: String, credentialHint: String) -> some View {
+    /// 统一服务商状态与开关联动卡片：切换开关实时驱动 model.setProviderEnabled 并同步菜单栏浮窗
+    private func unifiedProviderCard(
+        for provider: Provider,
+        name: String,
+        vendor: String,
+        version: String?,
+        location: String,
+        iconName: String
+    ) -> some View {
         let isEnabled = model.navigation.isEnabled(provider)
 
         return HStack(spacing: 12) {
-            Image(systemName: provider.iconName)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(AppTheme.codex)
-                .frame(width: 24)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(AppTheme.primaryText)
-
-                Text(credentialHint)
-                    .font(.system(size: 10.5, weight: .regular))
-                    .foregroundStyle(AppTheme.secondaryText)
-            }
-
-            Spacer()
-
-            Toggle("", isOn: Binding(
-                get: { isEnabled },
-                set: { _ in model.setProviderEnabled(provider, enabled: !isEnabled) }
-            ))
-            .labelsHidden()
-            .toggleStyle(.switch)
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
-                .fill(AppTheme.surface)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
-                        .stroke(AppTheme.hairline, lineWidth: 0.75)
-                )
-        )
-    }
-
-    /// 已检测到的本地 Agent 服务商卡片
-    private func detectedAgentCard(for agent: LocalToolEnvironment) -> some View {
-        let isEnabled = enabledAgentIds.contains(agent.id)
-
-        return HStack(spacing: 12) {
-            Image(systemName: agent.iconName)
+            Image(systemName: iconName)
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(AppTheme.codex)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text("\(agent.name) (\(agent.vendor))")
+                    Text("\(name) (\(vendor))")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(AppTheme.primaryText)
 
-                    if let ver = agent.version {
+                    if let ver = version {
                         Text(ver)
                             .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
                             .foregroundStyle(AppTheme.success)
@@ -254,7 +228,7 @@ struct ProvidersDiagnosticsTab: View {
                     }
                 }
 
-                Text(agent.locationPath ?? agent.statusDescription)
+                Text(location)
                     .font(.system(size: 10.5, weight: .regular, design: .monospaced))
                     .foregroundStyle(AppTheme.secondaryText)
                     .lineLimit(1)
@@ -262,14 +236,11 @@ struct ProvidersDiagnosticsTab: View {
 
             Spacer()
 
+            // 服务商开关：开启时浮窗菜单栏立即显示该提供商，关闭时浮窗菜单栏立即隐藏
             Toggle("", isOn: Binding(
                 get: { isEnabled },
-                set: { enable in
-                    if enable {
-                        enabledAgentIds.insert(agent.id)
-                    } else {
-                        enabledAgentIds.remove(agent.id)
-                    }
+                set: { enabled in
+                    model.setProviderEnabled(provider, enabled: enabled)
                 }
             ))
             .labelsHidden()
@@ -286,7 +257,7 @@ struct ProvidersDiagnosticsTab: View {
         )
     }
 
-    /// 触发单次按需测速（覆盖当前已启用的服务商与已检测到的 Agent 通道）
+    /// 触发单次按需测速（覆盖当前在本地已检测出且已启用的服务商通道）
     private func runDiagnostics() {
         guard !isTesting else { return }
         isTesting = true
@@ -294,20 +265,10 @@ struct ProvidersDiagnosticsTab: View {
         Task { @MainActor in
             var targets: [(id: String, name: String, url: URL)] = []
 
-            // 1. 核心 Provider (Codex / Kimi)
-            if model.navigation.isEnabled(.codex),
-               let ep = NetworkDiagnosticsService.knownEndpoints["codex"] {
-                targets.append((id: "codex", name: ep.name, url: ep.url))
-            }
-            if model.navigation.isEnabled(.kimiCode),
-               let ep = NetworkDiagnosticsService.knownEndpoints["kimi"] {
-                targets.append((id: "kimi", name: ep.name, url: ep.url))
-            }
-
-            // 2. 本地已检测到且已启用的额外 Agent
-            for agent in detectedExtraAgents where enabledAgentIds.contains(agent.id) {
-                if let ep = NetworkDiagnosticsService.knownEndpoints[agent.id] {
-                    targets.append((id: agent.id, name: ep.name, url: ep.url))
+            // 遍历所有已在本地检测出且当前处于开启状态的 Provider
+            for provider in Provider.allCases where model.navigation.isEnabled(provider) {
+                if let ep = NetworkDiagnosticsService.knownEndpoints[provider.toolId] {
+                    targets.append((id: provider.toolId, name: ep.name, url: ep.url))
                 }
             }
 
@@ -361,17 +322,17 @@ struct ProvidersDiagnosticsTab: View {
 
                 // 一键环境检测按钮
                 Button {
-                    runEnvironmentInspection()
+                    model.inspectEnvironment()
                 } label: {
                     HStack(spacing: 5) {
-                        if isDetectingEnv {
+                        if model.isDetectingEnv {
                             ProgressView()
                                 .controlSize(.mini)
                         } else {
                             Image(systemName: "arrow.clockwise")
                                 .font(.system(size: 10, weight: .semibold))
                         }
-                        Text(isDetectingEnv ? "探测中..." : "一键环境检测")
+                        Text(model.isDetectingEnv ? "探测中..." : "一键环境检测")
                             .font(.system(size: 11, weight: .medium))
                     }
                     .foregroundStyle(AppTheme.primaryText)
@@ -387,10 +348,10 @@ struct ProvidersDiagnosticsTab: View {
                     )
                 }
                 .buttonStyle(.plain)
-                .disabled(isDetectingEnv)
+                .disabled(model.isDetectingEnv)
             }
 
-            if toolEnvironments.isEmpty && !isDetectingEnv {
+            if toolEnvironments.isEmpty && !model.isDetectingEnv {
                 HStack {
                     Spacer()
                     VStack(spacing: 6) {
@@ -480,21 +441,5 @@ struct ProvidersDiagnosticsTab: View {
                         .stroke(AppTheme.hairline, lineWidth: 0.75)
                 )
         )
-    }
-
-    /// 触发单次本地 Agent 与工具链环境检测
-    private func runEnvironmentInspection() {
-        guard !isDetectingEnv else { return }
-        isDetectingEnv = true
-
-        Task { @MainActor in
-            let tools = await environmentInspector.inspectAllTools()
-            self.toolEnvironments = tools
-            // 自动将新检测到的已安装 agent 纳入可用通道诊断集合
-            for tool in tools where tool.isInstalled {
-                self.enabledAgentIds.insert(tool.id)
-            }
-            self.isDetectingEnv = false
-        }
     }
 }

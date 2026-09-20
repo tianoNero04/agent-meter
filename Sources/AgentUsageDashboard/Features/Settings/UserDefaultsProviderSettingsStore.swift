@@ -19,7 +19,7 @@ struct UserDefaultsProviderSettingsStore: ProviderSettingsStore {
         if let values = defaults.array(forKey: Keys.enabledProviders) as? [String] {
             enabled = Set(values.compactMap(Provider.init(rawValue:)))
         } else {
-            enabled = Set(Provider.allCases)
+            enabled = Set(Provider.coreProviders)
         }
         let selected = defaults.string(forKey: Keys.selectedProvider).flatMap(Provider.init(rawValue:))
         return ProviderPreferences(enabledProviders: enabled, selectedProvider: selected)
