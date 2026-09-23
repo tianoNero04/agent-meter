@@ -26,65 +26,92 @@ struct ProviderPanel: View {
     }
 }
 
-/// 模块 01：Provider 身份与订阅计划标牌（构成主义微圆角与荧光绿 TIER 高光）
+/// 模块 01：Provider 身份与订阅计划标牌（经由 /frontend-design 规范精工重构）
 struct ProviderHeroCard: View {
     let snapshot: ProviderSnapshot
 
     var body: some View {
         HStack(spacing: 12) {
-            // 纯黑微方块图标底衬
+            // 纯黑微方块图标底衬（充满 44x44 并贴合微圆角）
             ProviderIconTile(provider: snapshot.provider, size: 44)
 
-            // 粗壮无衬线标题与构成主义状态码
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 4) {
-                    Text("[01 // NODE]")
-                        .font(.system(size: 6.5, weight: .bold, design: .monospaced))
-                        .tracking(0.6)
-                        .foregroundStyle(AppTheme.secondaryText.opacity(0.8))
-                }
-
+            // 提供商核心身份与账号信息（移除冗余“已连接”，强化真实信息）
+            VStack(alignment: .leading, spacing: 3.5) {
                 Text(snapshot.provider.displayName.uppercased())
-                    .font(.system(size: 16, weight: .heavy, design: .default))
+                    .font(.system(size: 16.5, weight: .heavy, design: .default))
                     .tracking(0.8)
                     .foregroundStyle(AppTheme.primaryText)
 
-                HStack(spacing: 6) {
-                    StatusBadge(status: snapshot.status)
-                    if let error = snapshot.errorMessage {
-                        Text("PREV.DATA · \(error)")
-                            .font(.system(size: 7.5, weight: .medium, design: .monospaced))
-                            .foregroundStyle(AppTheme.warning)
-                            .lineLimit(1)
-                    }
+                if let error = snapshot.errorMessage {
+                    Text("ERR · \(error)")
+                        .font(.system(size: 8, weight: .medium, design: .monospaced))
+                        .foregroundStyle(AppTheme.warning)
+                        .lineLimit(1)
+                } else if let email = snapshot.account?.email, !email.isEmpty {
+                    Text(email)
+                        .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                        .foregroundStyle(AppTheme.secondaryText)
+                        .lineLimit(1)
+                } else {
+                    Text(accountSubtitle)
+                        .font(.system(size: 8, weight: .medium, design: .monospaced))
+                        .foregroundStyle(AppTheme.secondaryText)
+                        .lineLimit(1)
                 }
             }
 
             Spacer()
 
-            // 构成主义 Plan 架构标签（荧光绿发丝边框与荧光绿文字）
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("TIER // PLAN")
-                    .font(.system(size: 6.5, weight: .bold, design: .monospaced))
-                    .tracking(0.6)
-                    .foregroundStyle(AppTheme.secondaryText)
-                Text(planLabel)
-                    .font(.system(size: 12.5, weight: .heavy, design: .monospaced))
-                    .tracking(0.5)
-                    .foregroundStyle(AppTheme.neonGreen)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3.5)
-                    .background(AppTheme.elevated, in: RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-                            .stroke(AppTheme.neonGreenBorder, lineWidth: 0.75)
-                    )
+            // 右侧重塑：去噪、去伪按键化，打造 Apple Pro 精工规格微标牌
+            VStack(alignment: .trailing, spacing: 3) {
+                Text("PLAN")
+                    .font(.system(size: 7, weight: .bold, design: .monospaced))
+                    .tracking(1.0)
+                    .foregroundStyle(AppTheme.tertiaryText)
+
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(snapshot.status == .error ? AppTheme.warning : AppTheme.neonGreen)
+                        .frame(width: 4.5, height: 4.5)
+                        .shadow(color: (snapshot.status == .error ? AppTheme.warning : AppTheme.neonGreen).opacity(0.85), radius: 2)
+
+                    Text(planLabel)
+                        .font(.system(size: 11.5, weight: .heavy, design: .monospaced))
+                        .tracking(0.6)
+                        .foregroundStyle(AppTheme.primaryText)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                        .fill(AppTheme.elevated)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                                .stroke(AppTheme.hairlineBright, lineWidth: 0.75)
+                        )
+                )
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(height: 74)
         .panelBackground()
+    }
+
+    /// 账号通道与运行环境描述
+    private var accountSubtitle: String {
+        switch snapshot.provider {
+        case .codex:
+            return "OPENAI · DIRECT API"
+        case .kimiCode:
+            return "MOONSHOT · WIRE LOGS"
+        case .antigravity:
+            return "GOOGLE · AGY RUNTIME"
+        case .claude:
+            return "ANTHROPIC · CLI"
+        default:
+            return "\(snapshot.provider.displayName.uppercased()) · RUNTIME"
+        }
     }
 
     /// 计算当前订阅计划标签
