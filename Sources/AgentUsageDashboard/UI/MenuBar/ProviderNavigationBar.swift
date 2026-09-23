@@ -32,37 +32,42 @@ struct ProviderIconTab: View {
 
     @State private var isHovered = false
 
+    // 严谨等宽等高的 24x24 几何微方块
+    private let tabSize: CGFloat = 24
+
     var body: some View {
         Button(action: action) {
             ZStack {
-                // 选中态背景底衬与蓝色基准线
-                if isSelected {
-                    SelectedTabChip()
-                        .matchedGeometryEffect(id: "selectedTab", in: namespace)
-                } else if isHovered {
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(AppTheme.surface.opacity(0.9))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .stroke(AppTheme.hairline.opacity(0.6), lineWidth: 0.75)
-                        )
-                }
-
-                // Provider 专属高清图标
+                // Provider 专属高清图标或暗黑方块底衬
                 if let icon = BundleImages.providerIcon(for: provider) {
                     Image(nsImage: icon)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 14, height: 14)
-                        .opacity(isSelected ? 1.0 : (isHovered ? 0.9 : 0.55))
+                        .frame(width: tabSize, height: tabSize)
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous))
+                        .opacity(isSelected ? 1.0 : (isHovered ? 0.9 : 0.6))
                 } else {
+                    // 与位图图标统一形态的暗黑方块底衬
+                    RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                        .fill(AppTheme.elevated)
+                        .frame(width: tabSize, height: tabSize)
+
                     Image(systemName: provider.iconName)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(isSelected ? AppTheme.primaryText : AppTheme.secondaryText)
-                        .opacity(isSelected ? 1.0 : (isHovered ? 0.9 : 0.55))
+                        .opacity(isSelected ? 1.0 : (isHovered ? 0.9 : 0.6))
+                }
+
+                // 选中态高能荧光绿边框高光
+                if isSelected {
+                    SelectedTabChip()
+                        .matchedGeometryEffect(id: "selectedTab", in: namespace)
+                } else if isHovered {
+                    RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                        .stroke(AppTheme.hairlineBright, lineWidth: 0.75)
                 }
             }
-            .frame(width: 26, height: 24)
+            .frame(width: tabSize, height: tabSize)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -71,15 +76,12 @@ struct ProviderIconTab: View {
     }
 }
 
-/// 选中态平面构成主义指示框：纯黑硬朗微方块 + 荧光绿微细反光边框
+/// 选中态平面构成主义指示框：与方块图标完全等大的荧光绿发丝反光边框
 struct SelectedTabChip: View {
     var body: some View {
         RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-            .fill(AppTheme.elevated)
-            .overlay(
-                RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-                    .stroke(AppTheme.neonGreenBorder, lineWidth: 0.75)
-            )
+            .stroke(AppTheme.neonGreenBorder, lineWidth: 1.0)
+            .shadow(color: AppTheme.neonGreen.opacity(0.35), radius: 1.5)
     }
 }
 

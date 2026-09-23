@@ -19,10 +19,11 @@ struct ProviderIconTile: View {
                 Image(nsImage: icon)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: size * 0.78, height: size * 0.78)
+                    .frame(width: size, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             } else {
                 Image(systemName: provider.iconName)
-                    .font(.system(size: size * 0.44, weight: .semibold))
+                    .font(.system(size: size * 0.48, weight: .semibold))
                     .foregroundStyle(AppTheme.primaryText)
             }
 
