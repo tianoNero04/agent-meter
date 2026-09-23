@@ -111,7 +111,7 @@ struct PopoverTopBar: View {
             Spacer(minLength: 10)
 
             // 选项卡切换区与完整菜单面板图标
-            HStack(spacing: 8) {
+            HStack(spacing: 9) {
                 ProviderNavigationBar(model: model, selection: $selection, onSelect: onSelect)
 
                 // 极简 0.75pt 垂直微发丝分割线

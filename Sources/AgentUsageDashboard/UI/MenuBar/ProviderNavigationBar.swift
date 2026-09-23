@@ -8,7 +8,7 @@ struct ProviderNavigationBar: View {
     @Namespace private var tabNamespace
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 9) {
             ForEach(model.navigation.visibleProviders, id: \.self) { provider in
                 ProviderIconTab(
                     provider: provider,
