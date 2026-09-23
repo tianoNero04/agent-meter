@@ -71,7 +71,7 @@ struct ProviderIconTab: View {
     }
 }
 
-/// 选中态平面构成主义指示框：纯黑硬朗微方块 + 荧光绿微细反光边框 + 右下角高能荧光绿发光微指示点
+/// 选中态平面构成主义指示框：纯黑硬朗微方块 + 荧光绿微细反光边框
 struct SelectedTabChip: View {
     var body: some View {
         RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
@@ -80,14 +80,6 @@ struct SelectedTabChip: View {
                 RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
                     .stroke(AppTheme.neonGreenBorder, lineWidth: 0.75)
             )
-            .overlay(alignment: .bottomTrailing) {
-                // 标志性右下角荧光绿微型发光指示点
-                Circle()
-                    .fill(AppTheme.neonGreen)
-                    .frame(width: 3.5, height: 3.5)
-                    .shadow(color: AppTheme.neonGreen.opacity(0.9), radius: 2)
-                    .offset(x: -2.5, y: -2.5)
-            }
     }
 }
 
