@@ -5,8 +5,8 @@ struct ProviderIconTile: View {
     let provider: Provider
     let size: CGFloat
 
-    // 采用硬朗工业微圆角
-    private var cornerRadius: CGFloat { 6.0 }
+    // 采用硬朗几何微圆角
+    private var cornerRadius: CGFloat { AppTheme.geometricRadius }
 
     var body: some View {
         ZStack {

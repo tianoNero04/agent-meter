@@ -36,8 +36,11 @@ struct PopoverView: View {
                     slideEdge: slideEdge
                 )
                 .padding(.horizontal, 12)
-                .padding(.top, 10)
-                .padding(.bottom, 17)
+                .padding(.top, 9)
+                .padding(.bottom, 6)
+
+                // 底部构成主义发丝标语与系统状态指示栏
+                PopoverFooter()
             }
         }
         .frame(width: 390, height: 425)
@@ -132,7 +135,7 @@ struct PopoverTopBar: View {
     }
 }
 
-/// 右上角面板图标按钮：呈现严谨瑞士国际主义微圆角与悬停反馈，点击激活并启动完整菜单
+/// 右上角面板图标按钮：呈现严谨构成主义微圆角与荧光绿悬停反馈，点击激活并启动完整控制中心
 struct PanelMenuButton: View {
     let openMenu: () -> Void
     @State private var isHovered = false
@@ -140,16 +143,16 @@ struct PanelMenuButton: View {
     var body: some View {
         Button(action: openMenu) {
             ZStack {
-                RoundedRectangle(cornerRadius: 4)
+                RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
                     .fill(isHovered ? AppTheme.surface : Color.clear)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(isHovered ? AppTheme.hairline.opacity(0.8) : AppTheme.hairline.opacity(0.4), lineWidth: 0.75)
+                        RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                            .stroke(isHovered ? AppTheme.neonGreenBorder : AppTheme.hairline.opacity(0.5), lineWidth: 0.75)
                     )
 
                 Image(systemName: "macwindow.on.rectangle")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(isHovered ? AppTheme.primaryText : AppTheme.secondaryText)
+                    .foregroundStyle(isHovered ? AppTheme.neonGreen : AppTheme.secondaryText)
             }
             .frame(width: 24, height: 24)
             .contentShape(Rectangle())
@@ -157,6 +160,44 @@ struct PanelMenuButton: View {
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
         .help("启动控制中心总窗口 (Control Center)")
+    }
+}
+
+/// 底部构成主义发丝标语与系统微脉冲指示
+struct PopoverFooter: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(AppTheme.hairline)
+                .frame(height: 0.75)
+
+            HStack {
+                HStack(spacing: 4) {
+                    Text("AGENT METER // CONSTRUCTIVISM")
+                        .font(.system(size: 7, weight: .bold, design: .monospaced))
+                        .tracking(0.6)
+                        .foregroundStyle(AppTheme.tertiaryText)
+                }
+
+                Spacer()
+
+                // 极简微型荧光绿脉冲阵列
+                HStack(spacing: 3) {
+                    RoundedRectangle(cornerRadius: 0.5)
+                        .fill(AppTheme.neonGreen)
+                        .frame(width: 8, height: 2)
+                        .shadow(color: AppTheme.neonGreen.opacity(0.6), radius: 1)
+                    RoundedRectangle(cornerRadius: 0.5)
+                        .fill(Color.white.opacity(0.12))
+                        .frame(width: 4, height: 2)
+                    RoundedRectangle(cornerRadius: 0.5)
+                        .fill(Color.white.opacity(0.06))
+                        .frame(width: 4, height: 2)
+                }
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 18)
+        }
     }
 }
 

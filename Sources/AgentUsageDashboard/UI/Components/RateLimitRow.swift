@@ -1,36 +1,47 @@
 import SwiftUI
 
-/// 瑞士风格额度行组件：左侧图标与类型标识，中央为标志性分段标尺，右侧并置巨幅等宽百分比与重置信息
+/// 平面构成主义额度行组件：独立纯黑几何子卡片，内嵌荧光绿分段矩阵能量标尺与精确时间读数
 struct RateLimitRow: View {
     let window: RateLimitWindow
-    var accent: Color = AppTheme.codex
+    var accent: Color = AppTheme.neonGreen
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
-            // 工业规格图标
-            QuotaRowIcon(windowMinutes: window.windowMinutes)
+            // 工业规格几何圆形图标底衬
+            ZStack {
+                Circle()
+                    .fill(AppTheme.elevated)
+                    .frame(width: 28, height: 28)
+                    .overlay(
+                        Circle()
+                            .stroke(AppTheme.hairline, lineWidth: 0.75)
+                    )
 
-            // 窗口属性与题注
+                QuotaRowIcon(windowMinutes: window.windowMinutes)
+                    .font(.system(size: 11, weight: .medium))
+            }
+
+            // 窗口属性与构成题注
             VStack(alignment: .leading, spacing: 1.5) {
                 Text(window.label)
-                    .font(.system(size: 11, weight: .bold, design: .default))
+                    .font(.system(size: 11.5, weight: .bold, design: .default))
                     .foregroundStyle(AppTheme.primaryText)
                 Text(windowSubtitle)
                     .font(.system(size: 7, weight: .semibold, design: .monospaced))
                     .tracking(0.6)
                     .foregroundStyle(AppTheme.secondaryText)
             }
-            .frame(width: 60, alignment: .leading)
+            .frame(width: 52, alignment: .leading)
 
-            // 标志性视觉元素：瑞士高精度分段刻度能量标尺
+            // 标志性视觉元素：20 段等宽精密小矩形荧光绿点阵刻度标尺
             SwissSegmentedGauge(remainingPercent: window.remainingPercent, accent: accent)
                 .frame(maxWidth: .infinity)
 
             // 核心数值：大幅等宽百分比读数
             Text("\(window.remainingPercent, specifier: "%.0f")%")
-                .font(.system(size: 17, weight: .bold, design: .monospaced))
+                .font(.system(size: 17, weight: .heavy, design: .monospaced))
                 .foregroundStyle(AppTheme.primaryText)
-                .frame(width: 48, alignment: .trailing)
+                .frame(width: 44, alignment: .trailing)
 
             // 竖向发丝分割线与右侧重置倒计时
             if let resetsAt = window.resetsAt {
@@ -54,6 +65,16 @@ struct RateLimitRow: View {
                 .frame(width: 58, alignment: .leading)
             }
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                .fill(AppTheme.background.opacity(0.88))
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                        .stroke(AppTheme.hairline, lineWidth: 0.75)
+                )
+        )
     }
 
     private func resetDateText(from date: Date) -> String {
@@ -80,10 +101,10 @@ struct RateLimitRow: View {
     }
 }
 
-/// 瑞士高精度分段刻度标尺（Signature Element）：将额度容量划分为 20 格微型精密量块
+/// 构成主义高精度分段刻度标尺：将额度容量划分为 20 格荧光绿微型精密矩形量块
 struct SwissSegmentedGauge: View {
     let remainingPercent: Double
-    var accent: Color = AppTheme.codex
+    var accent: Color = AppTheme.neonGreen
 
     private let totalSegments: Int = 20
 
@@ -98,17 +119,18 @@ struct SwissSegmentedGauge: View {
                 ForEach(0..<totalSegments, id: \.self) { index in
                     let isFilled = index < filledCount
                     let isHead = index == filledCount - 1 && filledCount > 0
-                    Rectangle()
+                    RoundedRectangle(cornerRadius: 0.5, style: .continuous)
                         .fill(
                             isFilled
                                 ? (isHead ? Color.white : accent)
                                 : Color.white.opacity(0.08)
                         )
-                        .frame(width: segmentWidth, height: 6.5)
+                        .frame(width: segmentWidth, height: 9.0)
+                        .shadow(color: isFilled ? accent.opacity(0.4) : Color.clear, radius: 1.5)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(height: 6.5)
+        .frame(height: 9.0)
     }
 }

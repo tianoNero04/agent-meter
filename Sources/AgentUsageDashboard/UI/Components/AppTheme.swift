@@ -2,12 +2,12 @@ import SwiftUI
 
 /// 国际主义（Swiss Style）与杂志风核心主题系统
 enum AppTheme {
-    // 瑞士深墨黑底色（纯正炭黑，消除光污染）
-    static let background = Color(red: 0.039, green: 0.047, blue: 0.063) // #0A0C10
-    // 工业网格模块底色（低饱和沉稳微蓝黑）
-    static let surface = Color(red: 0.067, green: 0.082, blue: 0.110)    // #11151C
-    // 次级抬升表面（用于标签、按压态）
-    static let elevated = Color(red: 0.098, green: 0.118, blue: 0.157)   // #191E28
+    // 瑞士纯正深黑底色（纯正炭黑 #060709，消除光污染）
+    static let background = Color(red: 0.024, green: 0.027, blue: 0.035) // #060709
+    // 工业网格模块底色（低饱和沉稳暗黑 #0D0F13）
+    static let surface = Color(red: 0.051, green: 0.059, blue: 0.075)    // #0D0F13
+    // 次级抬升表面（用于标签、按压态 #13161B）
+    static let elevated = Color(red: 0.075, green: 0.086, blue: 0.106)   // #13161B
 
     // 纯白高对比度文字
     static let primaryText = Color(red: 0.973, green: 0.976, blue: 0.980)
@@ -21,16 +21,26 @@ enum AppTheme {
     // 聚焦与高光发丝线
     static let hairlineBright = Color.white.opacity(0.24)
 
-    // 国际克莱因蓝（International Blue），全局统一强调色
-    static let codex = Color(red: 0.040, green: 0.470, blue: 1.000)      // #0A78FF
-    static let kimi = Color(red: 0.040, green: 0.470, blue: 1.000)       // 遵循所有 Provider 统一风格规范
-    // 正常在线状态（精密绿点）
-    static let success = Color(red: 0.000, green: 0.900, blue: 0.600)
+    // 纯正高能荧光绿（Electric Neon Green），平面构成主义核心数据与指示强调色
+    static let neonGreen = Color(red: 0.000, green: 1.000, blue: 0.400) // #00FF66
+    // 荧光绿微光与环境光晕
+    static let neonGreenGlow = Color(red: 0.000, green: 1.000, blue: 0.400).opacity(0.18)
+    // 荧光绿边框线
+    static let neonGreenBorder = Color(red: 0.000, green: 1.000, blue: 0.400).opacity(0.40)
+
+    // 国际克莱因蓝（保留作为历史引用兼容）
+    static let codex = Color(red: 0.000, green: 1.000, blue: 0.400)      // 升级为高能荧光绿
+    static let kimi = Color(red: 0.000, green: 1.000, blue: 0.400)
+
+    // 正常在线状态（精密荧光绿点）
+    static let success = Color(red: 0.000, green: 1.000, blue: 0.400)
     // 警告/降级状态
     static let warning = Color(red: 1.000, green: 0.600, blue: 0.150)
 
-    // 常用网格圆角（硬朗紧凑的工业小圆角）
+    // 常用网格圆角（硬朗紧凑的工业微圆角，杜绝过度圆润膨胀）
     static let gridCornerRadius: CGFloat = 6.0
+    static let geometricRadius: CGFloat = 4.0
+    static let cardCornerRadius: CGFloat = 8.0
 }
 
 extension Provider {
