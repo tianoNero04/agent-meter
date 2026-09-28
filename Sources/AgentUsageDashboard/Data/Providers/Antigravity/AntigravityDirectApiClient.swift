@@ -54,18 +54,16 @@ struct AntigravityDirectApiClient {
     /// Google OAuth 刷新端点
     private static let tokenEndpoint = URL(string: "https://oauth2.googleapis.com/token")!
 
-    /// Google Cloud Code loadCodeAssist 内部接口端点列表（三级容灾回退：Daily -> Sandbox -> Prod）
+    /// Google Cloud Code loadCodeAssist 内部接口端点列表（优先正式生产端点，兼顾 Sandbox 容灾）
     private static let loadCodeAssistEndpoints: [URL] = [
-        URL(string: "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist")!,
-        URL(string: "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:loadCodeAssist")!,
-        URL(string: "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist")!
+        URL(string: "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist")!,
+        URL(string: "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:loadCodeAssist")!
     ]
 
-    /// Google Cloud Code retrieveUserQuotaSummary 内部接口端点列表（三级容灾回退：Daily -> Sandbox -> Prod）
+    /// Google Cloud Code retrieveUserQuotaSummary 内部接口端点列表（优先正式生产端点，兼顾 Sandbox 容灾）
     private static let quotaSummaryEndpoints: [URL] = [
-        URL(string: "https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary")!,
-        URL(string: "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:retrieveUserQuotaSummary")!,
-        URL(string: "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary")!
+        URL(string: "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary")!,
+        URL(string: "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:retrieveUserQuotaSummary")!
     ]
 
     /// 获取 Antigravity 额度与身份数据（多源候选凭据容错）
@@ -183,10 +181,11 @@ struct AntigravityDirectApiClient {
         return (data, httpResponse)
     }
 
-    /// 构造标准的 JSON POST 请求（使用 Antigravity 官方客户端 User-Agent，确保 Google 接口鉴权通过）
+    /// 构造标准的 JSON POST 请求（使用 Antigravity 官方客户端 User-Agent，设置 5 秒短超时防止挂起卡顿）
     private func makePostRequest(url: URL, accessToken: String, body: [String: Any]) -> URLRequest {
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
+        req.timeoutInterval = 5.0
         req.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("vscode/1.96.2 (Antigravity/4.3.0)", forHTTPHeaderField: "User-Agent")

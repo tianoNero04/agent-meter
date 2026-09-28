@@ -17,6 +17,7 @@ final class RefreshCoordinator {
     /// 目录事件密集时刷新会被无限取消、刷新状态永远不结束。
     private struct PendingRefresh {
         let previous: [Provider: ProviderSnapshot]
+        let onUpdate: (@MainActor (ProviderSnapshot) -> Void)?
         let onFinish: @MainActor ([ProviderSnapshot]) -> Void
     }
 
@@ -42,19 +43,21 @@ final class RefreshCoordinator {
     }
 
     /// 按 Provider 逐个执行 adapter 后在主 actor 回传结果；
+    /// 支持流式回调 onUpdate：任一 Provider 采集完成立即更新主线程，无需等待最慢的 Provider；
     /// 同通道已有刷新在跑时合并为一次挂起刷新，当前任务收尾后接着执行。
     /// 不同通道（账号/本地）互不影响，并行执行。
     func refresh(
         previous: [Provider: ProviderSnapshot],
         includeAccount: Bool,
+        onUpdate: (@MainActor (ProviderSnapshot) -> Void)? = nil,
         onFinish: @escaping @MainActor ([ProviderSnapshot]) -> Void
     ) {
         let lane: Lane = includeAccount ? .account : .local
         guard task(for: lane) == nil else {
-            setPending(PendingRefresh(previous: previous, onFinish: onFinish), for: lane)
+            setPending(PendingRefresh(previous: previous, onUpdate: onUpdate, onFinish: onFinish), for: lane)
             return
         }
-        startRefresh(lane: lane, previous: previous, includeAccount: includeAccount, onFinish: onFinish)
+        startRefresh(lane: lane, previous: previous, includeAccount: includeAccount, onUpdate: onUpdate, onFinish: onFinish)
     }
 
     private func task(for lane: Lane) -> Task<Void, Never>? {
@@ -89,12 +92,13 @@ final class RefreshCoordinator {
         lane: Lane,
         previous: [Provider: ProviderSnapshot],
         includeAccount: Bool,
+        onUpdate: (@MainActor (ProviderSnapshot) -> Void)?,
         onFinish: @escaping @MainActor ([ProviderSnapshot]) -> Void
     ) {
         let adapters = self.adapters
         let timeout = timeoutNanoseconds
         let task = Task {
-            // 各 Provider 并行刷新，整体耗时取最慢的一家而不是求和。
+            // 各 Provider 并行刷新，任一 Provider 完成立即通过 onUpdate 回调主线程
             let results = await withTaskGroup(of: (Int, ProviderSnapshot?).self) { group in
                 for (index, adapter) in adapters.enumerated() {
                     group.addTask {
@@ -106,7 +110,14 @@ final class RefreshCoordinator {
                     }
                 }
                 var collected: [(Int, ProviderSnapshot?)] = []
-                for await result in group { collected.append(result) }
+                for await result in group {
+                    collected.append(result)
+                    if let snapshot = result.1 {
+                        await MainActor.run {
+                            onUpdate?(snapshot)
+                        }
+                    }
+                }
                 return collected.sorted { $0.0 < $1.0 }
             }
             guard !Task.isCancelled else { return }
@@ -133,6 +144,7 @@ final class RefreshCoordinator {
             refresh(
                 previous: next.previous,
                 includeAccount: lane == .account,
+                onUpdate: next.onUpdate,
                 onFinish: next.onFinish
             )
         }

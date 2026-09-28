@@ -144,19 +144,25 @@ final class DashboardModel: ObservableObject {
     func refresh(includeAccount: Bool = true) {
         lastError = nil
         if includeAccount {
-            // 账号刷新（官方接口）驱动刷新指示；本地日志统计并行刷新，
-            // 解析再慢也不阻塞账号额度返回。
+            // 账号刷新（官方接口）驱动刷新指示；任一 Provider 拿到数据立即流式更新界面，
+            // 彻底告别等待全部 Provider 完成带来的卡顿感。
             isRefreshing = true
             coordinator.refresh(
                 previous: currentSnapshots,
-                includeAccount: true
+                includeAccount: true,
+                onUpdate: { [weak self] snapshot in
+                    self?.applySingleAccountRefresh(snapshot)
+                }
             ) { [weak self] snapshots in
                 self?.applyAccountRefresh(snapshots)
             }
         }
         coordinator.refresh(
             previous: currentSnapshots,
-            includeAccount: false
+            includeAccount: false,
+            onUpdate: { [weak self] snapshot in
+                self?.applySingleLocalRefresh(snapshot)
+            }
         ) { [weak self] snapshots in
             self?.applyLocalRefresh(snapshots)
         }
@@ -172,19 +178,42 @@ final class DashboardModel: ObservableObject {
         }
     }
 
+    /// 账号通道单个 Provider 完成即时更新（流式呈现）
+    private func applySingleAccountRefresh(_ snapshot: ProviderSnapshot) {
+        var merged = self.snapshot(for: snapshot.provider)
+        merged.account = snapshot.account
+        merged.windows = snapshot.windows
+        merged.accountUsage = snapshot.accountUsage
+        merged.source = snapshot.source
+        merged.errorMessage = snapshot.errorMessage
+        if snapshot.status == .connected { merged.status = .connected }
+        merged.collectedAt = snapshot.collectedAt
+        store(merged)
+    }
+
+    /// 本地通道单个 Provider 完成即时更新（流式呈现）
+    private func applySingleLocalRefresh(_ snapshot: ProviderSnapshot) {
+        var merged = self.snapshot(for: snapshot.provider)
+        merged.localTokenUsage = snapshot.localTokenUsage
+        merged.localDailyBuckets = snapshot.localDailyBuckets
+        merged.localModels = snapshot.localModels
+        if snapshot.status == .connected { merged.status = .connected }
+        merged.collectedAt = snapshot.collectedAt
+        if merged.source == "none" { merged.source = snapshot.source }
+        if merged.windows.isEmpty && !snapshot.windows.isEmpty {
+            merged.windows = snapshot.windows
+        }
+        if merged.account == nil && snapshot.account != nil {
+            merged.account = snapshot.account
+        }
+        store(merged)
+    }
+
     /// 账号通道结果：只采纳账号口径字段（额度窗口、计划、账号 Token），
     /// 本机统计保持当前值，避免覆盖本地通道刚写入的数据。账号通道收尾时结束刷新指示。
     private func applyAccountRefresh(_ snapshots: [ProviderSnapshot]) {
         for snapshot in snapshots {
-            var merged = self.snapshot(for: snapshot.provider)
-            merged.account = snapshot.account
-            merged.windows = snapshot.windows
-            merged.accountUsage = snapshot.accountUsage
-            merged.source = snapshot.source
-            merged.errorMessage = snapshot.errorMessage
-            if snapshot.status == .connected { merged.status = .connected }
-            merged.collectedAt = snapshot.collectedAt
-            store(merged)
+            applySingleAccountRefresh(snapshot)
         }
         finishApply(snapshots)
         isRefreshing = false
@@ -194,20 +223,7 @@ final class DashboardModel: ObservableObject {
     /// 账号字段保持当前值。本地后台刷新不驱动刷新指示。
     private func applyLocalRefresh(_ snapshots: [ProviderSnapshot]) {
         for snapshot in snapshots {
-            var merged = self.snapshot(for: snapshot.provider)
-            merged.localTokenUsage = snapshot.localTokenUsage
-            merged.localDailyBuckets = snapshot.localDailyBuckets
-            merged.localModels = snapshot.localModels
-            if snapshot.status == .connected { merged.status = .connected }
-            merged.collectedAt = snapshot.collectedAt
-            if merged.source == "none" { merged.source = snapshot.source }
-            if merged.windows.isEmpty && !snapshot.windows.isEmpty {
-                merged.windows = snapshot.windows
-            }
-            if merged.account == nil && snapshot.account != nil {
-                merged.account = snapshot.account
-            }
-            store(merged)
+            applySingleLocalRefresh(snapshot)
         }
         finishApply(snapshots)
     }

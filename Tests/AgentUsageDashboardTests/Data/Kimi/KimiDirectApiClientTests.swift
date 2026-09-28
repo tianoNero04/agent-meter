@@ -56,6 +56,61 @@ final class KimiDirectApiClientTests: XCTestCase {
         XCTAssertNotNil(secondary?.resetsAt)
     }
 
+    /// 验证优先解析官方 CLI 最新口径的 usages.limit_5h 与 usages.limit_7d 节点（含 used_ratio 浮点比例）
+    func testParseUsagesResponsePrefersUsagesNodeWithUsedRatio() throws {
+        let jsonString = """
+        {
+          "user": {
+            "userId": "ct3bu66akqcgn3f9t63g",
+            "membership": {
+              "level": "LEVEL_PRO"
+            }
+          },
+          "usage": {
+            "limit": "100",
+            "used": "24",
+            "resetTime": "2026-10-05T01:51:45Z"
+          },
+          "limits": [
+            {
+              "window": { "duration": 300 },
+              "detail": { "limit": "100", "used": "100" }
+            }
+          ],
+          "usages": {
+            "limit_5h": {
+              "used_ratio": 1.0,
+              "reset_time": "2026-09-28T09:51:44Z"
+            },
+            "limit_7d": {
+              "used_ratio": 0.235571,
+              "reset_time": "2026-10-05T01:51:45Z"
+            }
+          }
+        }
+        """
+        let data = jsonString.data(using: .utf8)!
+        let result = try KimiDirectApiClient.parseUsagesResponse(data: data, nickname: "登月开发者")
+
+        XCTAssertEqual(result.account.planType, "PRO")
+        XCTAssertEqual(result.account.email, "登月开发者")
+        XCTAssertEqual(result.windows.count, 2)
+
+        // 5 小时窗口：已用 100%，剩余 0%
+        let primary = result.windows.first { $0.id == "kimi.primary" }
+        XCTAssertNotNil(primary)
+        XCTAssertEqual(primary?.windowMinutes, 300)
+        XCTAssertEqual(primary?.usedPercent, 100.0)
+        XCTAssertEqual(primary?.remainingPercent, 0.0) // 剩余准确为 0%
+
+        // 7 天周窗口：已用 23.5571%，剩余 ~76.44%
+        let secondary = result.windows.first { $0.id == "kimi.secondary" }
+        XCTAssertNotNil(secondary)
+        XCTAssertEqual(secondary?.windowMinutes, 10080)
+        XCTAssertEqual(try XCTUnwrap(secondary?.usedPercent), 23.5571, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(secondary?.remainingPercent), 76.4429, accuracy: 0.001) // 剩余准确为 76.44%
+    }
+
     /// 验证从本地 JSON 提取 access_token 与 refresh_token
     func testParseCredentialsJsonExtractsTokens() throws {
         let jsonString = """

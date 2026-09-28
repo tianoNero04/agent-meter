@@ -256,15 +256,52 @@ struct KimiDirectApiClient {
 
         var windows: [RateLimitWindow] = []
 
-        // 2. 解析 5 小时窗口（limits 列表中 duration: 300 节点）
-        if let limits = json["limits"] as? [[String: Any]] {
+        // 2. 优先解析官方标准 usages 节点（对齐 Kimi 官方 CLI 最新口径）
+        if let usages = json["usages"] as? [String: Any] {
+            // 解析 5 小时短期窗口
+            if let limit5h = usages["limit_5h"] as? [String: Any],
+               let usedRatio = JSONSupport.double(limit5h["used_ratio"]) {
+                let usedPercent = max(0.0, min(100.0, usedRatio * 100.0))
+                let resetsAt = JSONSupport.date(limit5h["reset_time"])
+                windows.append(RateLimitWindow(
+                    id: "kimi.primary",
+                    usedPercent: usedPercent,
+                    windowMinutes: 300,
+                    resetsAt: resetsAt
+                ))
+            }
+
+            // 解析 7 天周额度窗口
+            if let limit7d = usages["limit_7d"] as? [String: Any],
+               let usedRatio = JSONSupport.double(limit7d["used_ratio"]) {
+                let usedPercent = max(0.0, min(100.0, usedRatio * 100.0))
+                let resetsAt = JSONSupport.date(limit7d["reset_time"])
+                windows.append(RateLimitWindow(
+                    id: "kimi.secondary",
+                    usedPercent: usedPercent,
+                    windowMinutes: 10080, // 7 天对应 10080 分钟
+                    resetsAt: resetsAt
+                ))
+            }
+        }
+
+        // 3. 回退解析 5 小时窗口（若 usages 未包含，则从 limits 列表中 duration: 300 节点读取）
+        if !windows.contains(where: { $0.id == "kimi.primary" }),
+           let limits = json["limits"] as? [[String: Any]] {
             for item in limits {
                 let duration = JSONSupport.int(JSONSupport.value(item, path: ["window", "duration"]))
-                if duration == 300 || windows.isEmpty {
+                if duration == 300 || !windows.contains(where: { $0.id == "kimi.primary" }) {
                     if let detail = item["detail"] as? [String: Any] {
                         let limit = JSONSupport.double(detail["limit"]) ?? 100.0
-                        let remaining = JSONSupport.double(detail["remaining"]) ?? limit
-                        let usedPercent = limit > 0 ? max(0, min(100, ((limit - remaining) / limit) * 100.0)) : 0.0
+                        let usedPercent: Double = {
+                            if let used = JSONSupport.double(detail["used"]), limit > 0 {
+                                return max(0, min(100, (used / limit) * 100.0))
+                            }
+                            if let remaining = JSONSupport.double(detail["remaining"]), limit > 0 {
+                                return max(0, min(100, ((limit - remaining) / limit) * 100.0))
+                            }
+                            return 0.0
+                        }()
                         let resetsAt = JSONSupport.date(detail["resetTime"])
 
                         windows.append(RateLimitWindow(
@@ -279,11 +316,19 @@ struct KimiDirectApiClient {
             }
         }
 
-        // 3. 解析周额度窗口（usage 节点，重置周期通常为 7 天）
-        if let usage = json["usage"] as? [String: Any] {
+        // 4. 回退解析周额度窗口（若 usages 未包含，则从 usage 节点读取）
+        if !windows.contains(where: { $0.id == "kimi.secondary" }),
+           let usage = json["usage"] as? [String: Any] {
             let limit = JSONSupport.double(usage["limit"]) ?? 100.0
-            let used = JSONSupport.double(usage["used"]) ?? 0.0
-            let usedPercent = limit > 0 ? max(0, min(100, (used / limit) * 100.0)) : 0.0
+            let usedPercent: Double = {
+                if let used = JSONSupport.double(usage["used"]), limit > 0 {
+                    return max(0, min(100, (used / limit) * 100.0))
+                }
+                if let remaining = JSONSupport.double(usage["remaining"]), limit > 0 {
+                    return max(0, min(100, ((limit - remaining) / limit) * 100.0))
+                }
+                return 0.0
+            }()
             let resetsAt = JSONSupport.date(usage["resetTime"])
 
             windows.append(RateLimitWindow(
