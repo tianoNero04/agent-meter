@@ -54,54 +54,102 @@ struct AntigravityDirectApiClient {
     /// Google OAuth 刷新端点
     private static let tokenEndpoint = URL(string: "https://oauth2.googleapis.com/token")!
 
-    /// Google Cloud Code 内部接口
-    private static let loadCodeAssistURL = URL(string: "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist")!
-    private static let quotaSummaryURL = URL(string: "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary")!
+    /// Google Cloud Code loadCodeAssist 内部接口端点列表（三级容灾回退：Daily -> Sandbox -> Prod）
+    private static let loadCodeAssistEndpoints: [URL] = [
+        URL(string: "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist")!,
+        URL(string: "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:loadCodeAssist")!,
+        URL(string: "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist")!
+    ]
 
-    /// 获取 Antigravity 额度与身份数据
+    /// Google Cloud Code retrieveUserQuotaSummary 内部接口端点列表（三级容灾回退：Daily -> Sandbox -> Prod）
+    private static let quotaSummaryEndpoints: [URL] = [
+        URL(string: "https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary")!,
+        URL(string: "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:retrieveUserQuotaSummary")!,
+        URL(string: "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary")!
+    ]
+
+    /// 获取 Antigravity 额度与身份数据（多源候选凭据容错）
     func fetch() async throws -> AntigravityAccountData {
-        var creds = try readCredentials()
-
-        // 尝试首次请求
-        do {
-            return try await executeFetch(creds: creds)
-        } catch AntigravityDirectApiError.credentialExpired {
-            // 若返回 401/403 且存在 refresh_token，尝试刷新一次
-            guard let refreshToken = creds.refreshToken, !refreshToken.isEmpty else {
-                throw AntigravityDirectApiError.credentialExpired(401)
-            }
-            let newAccessToken = try await refreshAccessToken(refreshToken: refreshToken)
-            creds.accessToken = newAccessToken
-            return try await executeFetch(creds: creds)
+        let candidates = readAllCandidateCredentials()
+        guard !candidates.isEmpty else {
+            throw AntigravityDirectApiError.credentialNotFound
         }
+
+        var lastError: Error?
+        for creds in candidates {
+            do {
+                return try await executeFetch(creds: creds)
+            } catch AntigravityDirectApiError.credentialExpired {
+                if let refreshToken = creds.refreshToken, !refreshToken.isEmpty,
+                   let newAccessToken = try? await refreshAccessToken(refreshToken: refreshToken) {
+                    var refreshed = creds
+                    refreshed.accessToken = newAccessToken
+                    if let result = try? await executeFetch(creds: refreshed) {
+                        return result
+                    }
+                }
+                lastError = AntigravityDirectApiError.credentialExpired(401)
+            } catch {
+                lastError = error
+            }
+        }
+
+        throw lastError ?? AntigravityDirectApiError.credentialNotFound
     }
 
-    /// 执行网络请求流程：先获取 project_id 与 tier，再获取配额摘要
+    /// 执行网络请求流程：先获取 project_id 与 tier，再获取配额摘要（均具备端点自动容灾降级）
     private func executeFetch(creds: AntigravityCredentials) async throws -> AntigravityAccountData {
-        // 1. 调用 loadCodeAssist
-        let loadRequest = makePostRequest(url: Self.loadCodeAssistURL, accessToken: creds.accessToken, body: [
-            "metadata": ["ideType": "ANTIGRAVITY"]
-        ])
+        // 1. 调用 loadCodeAssist（按顺序尝试三级端点）
+        var loadData: Data?
+        for endpoint in Self.loadCodeAssistEndpoints {
+            let req = makePostRequest(url: endpoint, accessToken: creds.accessToken, body: [
+                "metadata": ["ideType": "ANTIGRAVITY"]
+            ])
+            if let (data, resp) = try? await sendRequest(req), resp.statusCode == 200 {
+                loadData = data
+                break
+            }
+        }
 
-        let (loadData, _) = try await sendRequest(loadRequest)
-        let (resolvedProjectId, rawTier) = Self.parseLoadCodeAssist(data: loadData)
+        let resolvedProjectId: String?
+        let rawTier: String?
+        if let validLoadData = loadData {
+            let parsed = Self.parseLoadCodeAssist(data: validLoadData)
+            resolvedProjectId = parsed.projectId
+            rawTier = parsed.tierName
+        } else {
+            resolvedProjectId = nil
+            rawTier = nil
+        }
 
         let projectId = creds.projectId ?? resolvedProjectId
         let tier = Self.normalizeTier(rawTier)
 
-        // 2. 调用 retrieveUserQuotaSummary
+        // 2. 调用 retrieveUserQuotaSummary（按顺序尝试三级端点）
         var summaryBody: [String: Any] = [:]
         if let pid = projectId, !pid.isEmpty {
             summaryBody["project"] = pid
         }
-        let summaryRequest = makePostRequest(url: Self.quotaSummaryURL, accessToken: creds.accessToken, body: summaryBody)
-        let (summaryData, _) = try await sendRequest(summaryRequest)
+        var summaryData: Data?
+        for endpoint in Self.quotaSummaryEndpoints {
+            let req = makePostRequest(url: endpoint, accessToken: creds.accessToken, body: summaryBody)
+            if let (data, resp) = try? await sendRequest(req), resp.statusCode == 200 {
+                summaryData = data
+                break
+            }
+        }
 
-        let windows = Self.parseQuotaSummary(data: summaryData)
-        let email = creds.email
+        guard let validSummaryData = summaryData else {
+            throw AntigravityDirectApiError.httpError(403, "所有 retrieveUserQuotaSummary 端点均不可用")
+        }
+
+        let windows = Self.parseQuotaSummary(data: validSummaryData)
+        guard !windows.isEmpty else {
+            throw AntigravityDirectApiError.invalidResponseData
+        }
 
         return AntigravityAccountData(
-            account: AccountIdentity(planType: tier, email: email),
+            account: AccountIdentity(planType: tier, email: creds.email),
             windows: windows
         )
     }
@@ -135,13 +183,13 @@ struct AntigravityDirectApiClient {
         return (data, httpResponse)
     }
 
-    /// 构造标准的 JSON POST 请求
+    /// 构造标准的 JSON POST 请求（使用 Antigravity 官方客户端 User-Agent，确保 Google 接口鉴权通过）
     private func makePostRequest(url: URL, accessToken: String, body: [String: Any]) -> URLRequest {
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.setValue("antigravity", forHTTPHeaderField: "User-Agent")
+        req.setValue("vscode/1.96.2 (Antigravity/4.3.0)", forHTTPHeaderField: "User-Agent")
         req.httpBody = try? JSONSerialization.data(withJSONObject: body)
         return req
     }
@@ -180,12 +228,14 @@ struct AntigravityDirectApiClient {
         return newAccessToken
     }
 
-    /// 读取凭据，优先级：Keychain -> ~/.antigravity_tools -> ~/.gemini
-    func readCredentials() throws -> AntigravityCredentials {
+    /// 读取所有可用的候选凭据（用于按序容灾尝试：Keychain -> ~/.antigravity_tools -> ~/.gemini）
+    func readAllCandidateCredentials() -> [AntigravityCredentials] {
+        var candidates: [AntigravityCredentials] = []
+
         // 1. 尝试从 macOS Keychain 读取
         if allowKeychain, let keychainData = readKeychainGenericPassword(service: "gemini", account: "antigravity") {
             if let creds = try? Self.parseKeyringPayload(keychainData) {
-                return creds
+                candidates.append(creds)
             }
         }
 
@@ -200,7 +250,7 @@ struct AntigravityDirectApiClient {
                let detailData = try? Data(contentsOf: detailPath),
                let detailJson = try? JSONSerialization.jsonObject(with: detailData) as? [String: Any] {
                 if let creds = Self.parseToolsAccountJson(detailJson) {
-                    return creds
+                    candidates.append(creds)
                 }
             }
         }
@@ -210,17 +260,25 @@ struct AntigravityDirectApiClient {
         if FileManager.default.fileExists(atPath: geminiCliToken.path),
            let data = try? Data(contentsOf: geminiCliToken),
            let creds = try? Self.parseKeyringPayload(data) {
-            return creds
+            candidates.append(creds)
         }
 
         let jetskiToken = homeURL.appendingPathComponent(".gemini/jetski-standalone-oauth-token")
         if FileManager.default.fileExists(atPath: jetskiToken.path),
            let data = try? Data(contentsOf: jetskiToken),
            let creds = try? Self.parseKeyringPayload(data) {
-            return creds
+            candidates.append(creds)
         }
 
-        throw AntigravityDirectApiError.credentialNotFound
+        return candidates
+    }
+
+    /// 读取首选凭据（向后兼容单次读取调用）
+    func readCredentials() throws -> AntigravityCredentials {
+        guard let first = readAllCandidateCredentials().first else {
+            throw AntigravityDirectApiError.credentialNotFound
+        }
+        return first
     }
 
     /// 读取本地缓存的账户身份与配额数据（若存在 ~/.antigravity_tools 账户数据则免网解析）
@@ -357,17 +415,24 @@ struct AntigravityDirectApiClient {
         return email
     }
 
-    /// 解析 loadCodeAssist 响应
+    /// 解析 loadCodeAssist 响应，优先机器识别字段 paidTier.id（如 g1-pro-tier）
     static func parseLoadCodeAssist(data: Data) -> (projectId: String?, tierName: String?) {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return (nil, nil)
         }
         let project = json["cloudaicompanionProject"] as? String
-        let tierObj = json["currentTier"] as? [String: Any]
-        let tierId = tierObj?["id"] as? String
-        let tierName = tierObj?["name"] as? String
 
-        return (project, tierId ?? tierName)
+        // 优先权威机器字段 paidTier.id（如 g1-pro-tier / g1-ultra-tier）
+        let paidTierObj = json["paidTier"] as? [String: Any]
+        let paidTierId = paidTierObj?["id"] as? String
+        let paidTierName = paidTierObj?["name"] as? String
+
+        let currentTierObj = json["currentTier"] as? [String: Any]
+        let currentTierId = currentTierObj?["id"] as? String
+        let currentTierName = currentTierObj?["name"] as? String
+
+        let rawTier = paidTierId ?? paidTierName ?? currentTierId ?? currentTierName
+        return (project, rawTier)
     }
 
     /// 标准化订阅计划级别

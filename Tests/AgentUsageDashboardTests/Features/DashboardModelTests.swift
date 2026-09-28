@@ -91,6 +91,10 @@ final class DashboardModelTests: XCTestCase {
 
         fixture.model.refresh(includeAccount: true)
         await waitForRefresh(fixture.model)
+        for _ in 0..<100 {
+            if fixture.adapters.allSatisfy({ $0.includeAccountValues.count >= 2 }) { break }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
 
         // 账号刷新同时触发账号通道和本地通道，两条通道互不阻塞（调用顺序不定）。
         XCTAssertEqual(fixture.adapters.map { $0.includeAccountValues.sorted { !$0 && $1 } }, [[false, true], [false, true]])

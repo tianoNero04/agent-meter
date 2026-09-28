@@ -25,7 +25,8 @@ let package = Package(
             resources: [
                 .copy("Resources/AgentMeterLogoWhite.png"),
                 .copy("Resources/ProviderIconCodex.png"),
-                .copy("Resources/ProviderIconKimi.png")
+                .copy("Resources/ProviderIconKimi.png"),
+                .copy("Resources/ProviderIconAntigravity.png")
             ]
         ),
         .executableTarget(

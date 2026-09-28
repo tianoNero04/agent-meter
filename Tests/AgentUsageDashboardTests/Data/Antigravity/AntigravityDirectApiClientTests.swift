@@ -148,4 +148,17 @@ final class AntigravityDirectApiClientTests: XCTestCase {
             XCTAssertFalse(cached?.windows.isEmpty ?? true)
         }
     }
+
+    func testFetchRealAccountData() async throws {
+        let client = AntigravityDirectApiClient()
+        let toolsPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".antigravity_tools/accounts.json").path
+        if FileManager.default.fileExists(atPath: toolsPath) {
+            if let data = try? await client.fetch() {
+                XCTAssertNotNil(data.account.email)
+                XCTAssertEqual(data.windows.count, 2)
+                XCTAssertEqual(data.windows[0].windowMinutes, 300)
+                XCTAssertEqual(data.windows[1].windowMinutes, 10080)
+            }
+        }
+    }
 }

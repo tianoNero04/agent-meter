@@ -5,11 +5,13 @@ enum BundleImages {
     // 各 Provider 专属图标位图
     static let providerIconCodex: NSImage? = load("ProviderIconCodex")
     static let providerIconKimi: NSImage? = load("ProviderIconKimi")
+    static let providerIconAntigravity: NSImage? = load("ProviderIconAntigravity")
 
     static func providerIcon(for provider: Provider) -> NSImage? {
         switch provider {
         case .codex: return providerIconCodex
         case .kimiCode: return providerIconKimi
+        case .antigravity: return providerIconAntigravity
         default: return nil // 无位图资源时回退至高清矢量 SF Symbol
         }
     }

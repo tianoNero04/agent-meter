@@ -100,4 +100,10 @@ final class AntigravityProviderTests: XCTestCase {
         XCTAssertEqual(snapshot.windows.first?.id, "antigravity.5h")
         XCTAssertNotNil(snapshot.errorMessage)
     }
+
+    /// 验证 BundleImages 正确装载 Antigravity 官方 App 图标位图
+    func testBundleImagesLoadsAntigravityIcon() {
+        let icon = BundleImages.providerIcon(for: .antigravity)
+        XCTAssertNotNil(icon)
+    }
 }
