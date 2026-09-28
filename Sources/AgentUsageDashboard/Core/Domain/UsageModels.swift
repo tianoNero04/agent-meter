@@ -1,16 +1,27 @@
 import Foundation
 
 struct RateLimitWindow: Codable, Identifiable, Hashable {
+    /// 额度窗口唯一标识符
     var id: String
+    /// 已消耗百分比 (0.0 ~ 100.0)
     var usedPercent: Double
+    /// 窗口总时长分钟数（如 300 分钟、10080 分钟）
     var windowMinutes: Int?
+    /// 额度重置时间点
     var resetsAt: Date?
+    /// 可选的友好展示名称（如 "Claude"、"Gemini"），为空时根据时长显示默认标签
+    var name: String? = nil
 
+    /// 剩余可用百分比
     var remainingPercent: Double {
         max(0, min(100, 100 - usedPercent))
     }
 
+    /// 标签显示文本：若指定自定义名称则优先返回，否则按窗口分钟数或 ID 展示
     var label: String {
+        if let name = name, !name.isEmpty {
+            return name
+        }
         if let minutes = windowMinutes {
             switch minutes {
             case 300: return "5 小时"

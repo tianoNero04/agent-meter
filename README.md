@@ -1,6 +1,6 @@
 # Agent Meter
 
-一个低资源、原生 macOS 菜单栏用量仪表盘，面向 Codex 和 Kimi Code。
+一个低资源、原生 macOS 菜单栏用量仪表盘，面向 Codex、Kimi Code 和 Antigravity。
 
 点击右上角图标后，App 会打开固定尺寸的用量弹窗并刷新账号级数据；平时只保留轻量的菜单栏进程和文件事件监听。
 
@@ -14,6 +14,7 @@
 - 杂志风与国际主义设计（Swiss Style）：深墨黑 `#0A0C10`、网格表面 `#11151C`、`0.75pt` 发丝线与微型 20 格精密分段能量标尺。
 - 真实多模型动态加权计费：精准匹配 2026 年最新主流模型（如 `gpt-5.6-luna`、`gpt-5.6-sol`、`gpt-5.5`、`k3-256k`、`kimi-for-coding` 等），智能剔除组织前缀与别名映射；监控大盘按本地各模型实际消耗比例进行精确加权成本与缓存节省换算，杜绝老旧单一模型硬编码带来的费率失真。
 - Codex / Kimi 账号额度：仿照 `cc-switch` 模式，优先通过轻量级 HTTPS 直连接口（读取本地 Keychain 或 `~/.codex/auth.json`、`~/.kimi-code/credentials/kimi-code.json` 凭据直接请求官方后端，支持静默自动刷新），百毫秒级响应且无子进程开销；Codex 直连未果时平滑降级至 `codex app-server`。
+- Antigravity 额度与统计：对齐 `Antigravity-Manager`，优先读取本地 Keychain 或 `~/.antigravity_tools/accounts/` 凭据直接请求 Google Cloud Code 官方内部额度接口，提取 Gemini 5 小时与周额度窗口（统一视觉与倒计时样式）；本机日志从 `~/.antigravity_tools/token_stats.db` 聚合模型排行与 7 日动态趋势，并支持本地缓存秒级离线呈现。
 - 打开面板才查询，平时不查询：带 30 秒智能防刷冷却，频繁打开自动复用内存快照避免限频；面板关闭立即中断在途请求，后台常驻期间绝无网络活动。
 - Codex/Kimi 用量统计对齐 `cc-switch`：精准解析会话日志中的 `last_token_usage` 与 `total_token_usage` 增量 delta，兼容 `cached_input_tokens` 与 `cache_read_input_tokens`，在面板中展示真实算力消耗、输入输出细分与缓存命中率（Cache Hit Rate），并按日聚合 7 天趋势分桶。
 - 5 小时额度显示相对重置时长，周额度显示具体重置时间；服务端没有返回的窗口不会被 UI 猜测补齐。
@@ -23,7 +24,7 @@
 
 ## 数据边界
 
-账号额度和账号 Token 总量是跨设备的服务器数据；本机模型排行只代表当前 Mac 的日志观测值。Codex 与 Kimi Code 均通过各自的轻量官方直连接口获取实时 5 小时与周额度，不制造虚假的账号级百分比。
+账号额度和账号 Token 总量是跨设备的服务器数据；本机模型排行只代表当前 Mac 的日志观测值。Codex、Kimi Code 与 Antigravity 均通过各自的轻量官方直连接口获取实时 5 小时与周额度，不制造虚假的账号级百分比。
 
 ## 使用
 
@@ -46,7 +47,7 @@ open Build/AgentUsageDashboard.app
 
 打包脚本会使用 macOS 原生 `sips` 和 `iconutil` 从 `assets/image.png` 生成 App 图标，不需要手动准备 `.icns` 文件。
 
-首版关闭 App Sandbox，因为需要在用户打开弹窗时启动本机已经安装的 `codex app-server`。App 只访问明确的 Codex/Kimi 数据路径，并在 README 中公开这些路径。
+首版关闭 App Sandbox，因为需要在用户打开弹窗时启动本机已经安装的 `codex app-server`。App 只访问明确的 Codex/Kimi/Antigravity 数据路径（`~/.codex/sessions`、`~/.kimi-code/sessions`、`~/.antigravity_tools`），并在 README 中公开这些路径。
 
 ## 验证
 

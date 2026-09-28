@@ -9,14 +9,15 @@ struct AppDependencies {
     let watcherFactory: (@escaping () -> Void) -> [DirectoryWatcher]
 
     init() {
-        self.adapters = [CodexProvider(), KimiProvider()]
+        self.adapters = [CodexProvider(), KimiProvider(), AntigravityProvider()]
         self.repository = JSONSnapshotRepository()
         self.settingsStore = UserDefaultsProviderSettingsStore()
 
         let home = FileManager.default.homeDirectoryForCurrentUser
         let roots = [
             home.appendingPathComponent(".codex/sessions"),
-            home.appendingPathComponent(".kimi-code/sessions")
+            home.appendingPathComponent(".kimi-code/sessions"),
+            home.appendingPathComponent(".antigravity_tools")
         ]
         self.watcherFactory = { handler in
             roots.map { FSEventsDirectoryWatcher(rootURL: $0, handler: handler) }

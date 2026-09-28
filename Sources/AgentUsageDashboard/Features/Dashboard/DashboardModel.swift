@@ -10,7 +10,8 @@ final class DashboardModel: ObservableObject {
     /// 各 Provider 快照字典存储，支持动态接入扩展 Agent 快照
     @Published private(set) var providerSnapshots: [Provider: ProviderSnapshot] = [
         .codex: .empty(.codex),
-        .kimiCode: .empty(.kimiCode)
+        .kimiCode: .empty(.kimiCode),
+        .antigravity: .empty(.antigravity)
     ]
 
     /// 兼容旧属性调用的 Codex 快照快捷访问
@@ -23,6 +24,12 @@ final class DashboardModel: ObservableObject {
     var kimi: ProviderSnapshot {
         get { providerSnapshots[.kimiCode] ?? .empty(.kimiCode) }
         set { providerSnapshots[.kimiCode] = newValue }
+    }
+
+    /// Antigravity 快照快捷访问
+    var antigravity: ProviderSnapshot {
+        get { providerSnapshots[.antigravity] ?? .empty(.antigravity) }
+        set { providerSnapshots[.antigravity] = newValue }
     }
 
     @Published private(set) var navigation: ProviderNavigationState
@@ -86,8 +93,9 @@ final class DashboardModel: ObservableObject {
 
     func start() {
         if let persisted = repository.load() {
-            codex = persisted.current.providers.first(where: { $0.provider == .codex }) ?? .empty(.codex)
-            kimi = persisted.current.providers.first(where: { $0.provider == .kimiCode }) ?? .empty(.kimiCode)
+            for providerSnapshot in persisted.current.providers {
+                providerSnapshots[providerSnapshot.provider] = providerSnapshot
+            }
             history = persisted.history
             lastRefresh = persisted.current.collectedAt
         }
@@ -193,6 +201,12 @@ final class DashboardModel: ObservableObject {
             if snapshot.status == .connected { merged.status = .connected }
             merged.collectedAt = snapshot.collectedAt
             if merged.source == "none" { merged.source = snapshot.source }
+            if merged.windows.isEmpty && !snapshot.windows.isEmpty {
+                merged.windows = snapshot.windows
+            }
+            if merged.account == nil && snapshot.account != nil {
+                merged.account = snapshot.account
+            }
             store(merged)
         }
         finishApply(snapshots)
@@ -244,7 +258,11 @@ final class DashboardModel: ObservableObject {
             lastError = error
         }
 
-        let snapshot = DashboardSnapshot(collectedAt: now, providers: [codex, kimi])
+        var activeSnapshots: [ProviderSnapshot] = [codex, kimi]
+        if let ag = providerSnapshots[.antigravity], ag.status != .unavailable || !ag.windows.isEmpty || ag.localTokenUsage.total > 0 || !ag.localModels.isEmpty {
+            activeSnapshots.append(ag)
+        }
+        let snapshot = DashboardSnapshot(collectedAt: now, providers: activeSnapshots)
         // 内存中的历史与落盘保持同一 30 天裁剪规则，避免常驻期间无限增长。
         let cutoff = now.addingTimeInterval(-30 * 24 * 60 * 60)
         history.removeAll { $0.collectedAt < cutoff }
