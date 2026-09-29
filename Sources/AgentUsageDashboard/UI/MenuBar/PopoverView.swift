@@ -39,8 +39,13 @@ struct PopoverView: View {
                 .padding(.top, 9)
                 .padding(.bottom, 6)
 
-                // 底部构成主义发丝标语与系统状态指示栏
-                PopoverFooter()
+                // 底部构成主义发丝标语与系统状态指示栏（小横杠数量与选中位置同顶部 Provider 动态联动）
+                PopoverFooter(
+                    providers: model.navigation.visibleProviders,
+                    selectedProvider: selectedProvider
+                ) { provider in
+                    selectProvider(provider)
+                }
             }
         }
         .frame(width: 390, height: 425)
@@ -163,8 +168,12 @@ struct PanelMenuButton: View {
     }
 }
 
-/// 底部构成主义发丝标语与系统微脉冲指示
+/// 底部构成主义发丝标语与系统状态微能量指示（小横杠数量与选中位置同顶部 Provider 动态联动）
 struct PopoverFooter: View {
+    var providers: [Provider] = [.codex, .kimiCode]
+    var selectedProvider: Provider = .codex
+    var onSelect: ((Provider) -> Void)? = nil
+
     var body: some View {
         VStack(spacing: 0) {
             Rectangle()
@@ -181,19 +190,26 @@ struct PopoverFooter: View {
 
                 Spacer()
 
-                // 极简微型荧光绿脉冲阵列
+                // 与顶部 Provider 完全数量对齐并按位置联动的微型荧光绿脉冲阵列
                 HStack(spacing: 3) {
-                    RoundedRectangle(cornerRadius: 0.5)
-                        .fill(AppTheme.neonGreen)
-                        .frame(width: 8, height: 2)
-                        .shadow(color: AppTheme.neonGreen.opacity(0.6), radius: 1)
-                    RoundedRectangle(cornerRadius: 0.5)
-                        .fill(Color.white.opacity(0.12))
-                        .frame(width: 4, height: 2)
-                    RoundedRectangle(cornerRadius: 0.5)
-                        .fill(Color.white.opacity(0.06))
-                        .frame(width: 4, height: 2)
+                    ForEach(providers, id: \.self) { provider in
+                        let isSelected = provider == selectedProvider
+                        Button {
+                            onSelect?(provider)
+                        } label: {
+                            RoundedRectangle(cornerRadius: 0.5)
+                                .fill(isSelected ? AppTheme.neonGreen : Color.white.opacity(0.14))
+                                .frame(width: isSelected ? 8 : 4, height: 2)
+                                .shadow(
+                                    color: isSelected ? AppTheme.neonGreen.opacity(0.6) : .clear,
+                                    radius: isSelected ? 1 : 0
+                                )
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
+                .animation(.easeInOut(duration: 0.20), value: selectedProvider)
             }
             .padding(.horizontal, 14)
             .frame(height: 18)
