@@ -5,8 +5,10 @@ import SwiftUI
 struct ModelPricingTab: View {
     @ObservedObject var model: DashboardModel
     @State private var preferences: PricingPreferences
+    @State private var selectedProvider = "全部服务商"
     @State private var isCheckingUpdates = false
     @State private var updateMessage: String?
+    @State private var updateErrorDetail: String?
     @State private var hoveredModelId: String?
 
     private let store: PricingSettingsStore
@@ -18,34 +20,24 @@ struct ModelPricingTab: View {
     }
 
     var body: some View {
+        let pricings = displayedPricings
+        let providerNames = Array(Set(pricings.map { detectProviderName(for: $0.modelName) })).sorted()
+        let visiblePricings = selectedProvider == "全部服务商"
+            ? pricings
+            : pricings.filter { detectProviderName(for: $0.modelName) == selectedProvider }
+
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 18) {
-                // 顶栏刊头标示
-                HStack(spacing: 8) {
-                    Image(systemName: "dollarsign.circle")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(AppTheme.codex)
+            VStack(alignment: .leading, spacing: 14) {
+                Text("模型费率与成本换算")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
 
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("模型费率与成本换算")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(AppTheme.primaryText)
-
-                        Text("PRICING // DATA.TABLE.V3")
-                            .font(.system(size: 8.5, weight: .medium, design: .monospaced))
-                            .tracking(0.8)
-                            .foregroundStyle(AppTheme.tertiaryText)
-                    }
-
-                    Spacer()
-                }
-
-                // 货币与汇率控制卡片
+                // 将币种与汇率作为轻量设置行，避免在表格外再叠一层卡片。
                 HStack(spacing: 16) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("结算展示币种")
+                        Text("展示币种")
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(AppTheme.primaryText)
+                            .foregroundStyle(AppTheme.secondaryText)
 
                         Picker("", selection: $preferences.targetCurrency) {
                             ForEach(PricingCurrency.allCases) { currency in
@@ -60,9 +52,9 @@ struct ModelPricingTab: View {
                     Spacer()
 
                     VStack(alignment: .trailing, spacing: 6) {
-                        Text("美元/人民币汇率基准")
+                        Text("美元兑人民币")
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(AppTheme.primaryText)
+                            .foregroundStyle(AppTheme.secondaryText)
 
                         HStack(spacing: 6) {
                             Text("1 USD =")
@@ -89,79 +81,63 @@ struct ModelPricingTab: View {
                         }
                     }
                 }
-                .padding(14)
-                .background(
-                    RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
-                        .fill(AppTheme.surface)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
-                                .stroke(AppTheme.hairline, lineWidth: 0.75)
-                        )
-                )
-
-                if let updateMessage {
-                    Text(updateMessage)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(AppTheme.success)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(AppTheme.success.opacity(0.1))
-                        )
+                .padding(.bottom, 12)
+                .overlay(alignment: .bottom) {
+                    Rectangle()
+                        .fill(AppTheme.hairline)
+                        .frame(height: 0.75)
                 }
 
-                // 主数据表格卡片（严格复刻 ReactBits Pro data-table-3）
+                // 主数据表格
                 VStack(alignment: .leading, spacing: 0) {
-                    // 表格头部栏 (Card Header)
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("模型费率矩阵与实时换算")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(AppTheme.primaryText)
-
-                            Text("点击单价药丸单元格可直接行内调整 · 支持实时换算与乐观保存")
-                                .font(.system(size: 11, weight: .regular))
-                                .foregroundStyle(AppTheme.tertiaryText)
-                        }
+                    HStack(spacing: 12) {
+                        Text("模型定价")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(AppTheme.primaryText)
 
                         Spacer()
 
-                        // 检查最新模型定价按钮
+                        if let updateMessage {
+                            Text(updateMessage)
+                                .font(.system(size: 10, weight: .regular))
+                                .foregroundStyle(AppTheme.secondaryText)
+                                .lineLimit(1)
+                                .help(updateErrorDetail ?? updateMessage)
+                        }
+
+                        Picker("服务商", selection: $selectedProvider) {
+                            Text("全部服务商").tag("全部服务商")
+                            ForEach(providerNames, id: \.self) { provider in
+                                Text(provider).tag(provider)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .fixedSize()
+
                         Button {
                             checkForUpdates()
                         } label: {
                             HStack(spacing: 5) {
                                 if isCheckingUpdates {
                                     ProgressView()
-                                        .scaleEffect(0.65)
+                                        .controlSize(.small)
                                         .frame(width: 12, height: 12)
                                 } else {
                                     Image(systemName: "arrow.triangle.2.circlepath")
-                                        .font(.system(size: 11, weight: .semibold))
+                                        .font(.system(size: 11, weight: .medium))
                                 }
 
-                                Text(isCheckingUpdates ? "同步中..." : "检查最新模型定价")
-                                    .font(.system(size: 11.5, weight: .medium))
+                                Text(isCheckingUpdates ? "同步中" : "检查更新")
+                                    .font(.system(size: 11, weight: .medium))
                             }
-                            .foregroundStyle(AppTheme.primaryText)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(
-                                RoundedRectangle(cornerRadius: 5)
-                                    .fill(Color(white: 0.12))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 5)
-                                            .stroke(Color.white.opacity(0.12), lineWidth: 0.75)
-                                    )
-                            )
+                            .foregroundStyle(AppTheme.secondaryText)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderless)
                         .disabled(isCheckingUpdates)
+                        .help("检查最新模型定价")
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 16)
-                    .padding(.bottom, 14)
+                    .padding(.vertical, 12)
 
                     Divider()
                         .background(Color.white.opacity(0.08))
@@ -200,13 +176,20 @@ struct ModelPricingTab: View {
 
                     // 表格数据行列表 (Table Data Rows)
                     VStack(spacing: 0) {
-                        ForEach(displayedPricings) { pricingItem in
+                        ForEach(visiblePricings) { pricingItem in
                             tableRow(for: pricingItem)
 
-                            if pricingItem.id != displayedPricings.last?.id {
+                            if pricingItem.id != visiblePricings.last?.id {
                                 Divider()
                                     .background(Color.white.opacity(0.05))
                             }
+                        }
+
+                        if visiblePricings.isEmpty {
+                            Text("没有该服务商的模型")
+                                .font(.system(size: 12))
+                                .foregroundStyle(AppTheme.tertiaryText)
+                                .frame(maxWidth: .infinity, minHeight: 72)
                         }
                     }
                 }
@@ -219,7 +202,7 @@ struct ModelPricingTab: View {
 
                 Spacer(minLength: 20)
             }
-            .padding(.top, 44)
+            .padding(.top, 36)
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
         }
@@ -397,17 +380,18 @@ struct ModelPricingTab: View {
     private func checkForUpdates() {
         isCheckingUpdates = true
         updateMessage = nil
+        updateErrorDetail = nil
 
         Task { @MainActor in
             do {
                 let result = try await ModelPricingSyncService.shared.syncAndSave(store: store)
                 self.preferences = store.load()
                 self.isCheckingUpdates = false
-                let timeStr = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
-                self.updateMessage = "✓ 已成功同步最新模型定价：已拉取 \(result.totalCount) 款模型 (更新 \(result.updatedCount) 项，时间 \(timeStr))"
+                self.updateMessage = "已同步 \(result.totalCount) 款 · 更新 \(result.updatedCount) 项"
             } catch {
                 self.isCheckingUpdates = false
-                self.updateMessage = "⚠ 同步 models.dev 异常：\(error.localizedDescription)，已保留本地最新预设费率"
+                self.updateMessage = "同步失败 · 已保留本地费率"
+                self.updateErrorDetail = error.localizedDescription
             }
         }
     }
