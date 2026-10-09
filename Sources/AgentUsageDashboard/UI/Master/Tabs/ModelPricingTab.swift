@@ -10,6 +10,9 @@ struct ModelPricingTab: View {
     @State private var updateMessage: String?
     @State private var updateErrorDetail: String?
     @State private var hoveredModelId: String?
+    @State private var isProviderFilterHovered = false
+    @State private var isRefreshHovered = false
+    @FocusState private var isExchangeRateFocused: Bool
 
     private let store: PricingSettingsStore
 
@@ -45,7 +48,9 @@ struct ModelPricingTab: View {
                             }
                         }
                         .pickerStyle(.segmented)
+                        .controlSize(.small)
                         .frame(width: 220)
+                        .accessibilityLabel("展示币种")
                         .onChange(of: preferences.targetCurrency) { _ in save() }
                     }
 
@@ -66,13 +71,17 @@ struct ModelPricingTab: View {
                                 .font(.system(size: 12, weight: .bold, design: .monospaced))
                                 .foregroundStyle(AppTheme.primaryText)
                                 .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .frame(width: 60)
+                                .frame(width: 64, height: 26)
+                                .focused($isExchangeRateFocused)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 4)
-                                        .fill(AppTheme.surface)
-                                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(AppTheme.hairline, lineWidth: 0.75))
+                                    RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                                        .fill(AppTheme.elevated)
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                                                .stroke(isExchangeRateFocused ? AppTheme.hairlineBright : AppTheme.hairline, lineWidth: 0.75)
+                                        }
                                 )
+                                .accessibilityLabel("美元兑人民币汇率")
                                 .onSubmit { save() }
 
                             Text("CNY")
@@ -105,14 +114,44 @@ struct ModelPricingTab: View {
                                 .help(updateErrorDetail ?? updateMessage)
                         }
 
-                        Picker("服务商", selection: $selectedProvider) {
-                            Text("全部服务商").tag("全部服务商")
+                        Menu {
+                            providerFilterOption("全部服务商")
+                            if !providerNames.isEmpty {
+                                Divider()
+                            }
                             ForEach(providerNames, id: \.self) { provider in
-                                Text(provider).tag(provider)
+                                providerFilterOption(provider)
+                            }
+                        } label: {
+                            HStack(spacing: 7) {
+                                Image(systemName: "line.3.horizontal.decrease")
+                                    .font(.system(size: 10, weight: .medium))
+
+                                Text(selectedProvider)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .lineLimit(1)
+
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 8, weight: .semibold))
+                            }
+                            .foregroundStyle(isProviderFilterHovered ? AppTheme.primaryText : AppTheme.secondaryText)
+                            .padding(.horizontal, 9)
+                            .frame(height: 26)
+                            .background(
+                                isProviderFilterHovered ? AppTheme.elevated : AppTheme.surface,
+                                in: RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                            )
+                            .overlay {
+                                RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                                    .stroke(AppTheme.hairline, lineWidth: 0.75)
                             }
                         }
-                        .pickerStyle(.menu)
+                        .menuStyle(.borderlessButton)
                         .fixedSize()
+                        .onHover { isProviderFilterHovered = $0 }
+                        .accessibilityLabel("按服务商筛选")
+                        .accessibilityValue(selectedProvider)
+                        .help("按服务商筛选模型")
 
                         Button {
                             checkForUpdates()
@@ -130,11 +169,23 @@ struct ModelPricingTab: View {
                                 Text(isCheckingUpdates ? "同步中" : "检查更新")
                                     .font(.system(size: 11, weight: .medium))
                             }
-                            .foregroundStyle(AppTheme.secondaryText)
+                            .foregroundStyle(isRefreshHovered ? AppTheme.primaryText : AppTheme.secondaryText)
+                            .padding(.horizontal, 9)
+                            .frame(height: 26)
+                            .background(
+                                isRefreshHovered ? AppTheme.surface : Color.clear,
+                                in: RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                            )
+                            .overlay {
+                                RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                                    .stroke(isRefreshHovered ? AppTheme.hairline : Color.clear, lineWidth: 0.75)
+                            }
                         }
                         .buttonStyle(.borderless)
                         .disabled(isCheckingUpdates)
                         .help("检查最新模型定价")
+                        .accessibilityLabel(isCheckingUpdates ? "正在检查模型定价" : "检查最新模型定价")
+                        .onHover { isRefreshHovered = $0 }
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
@@ -307,6 +358,22 @@ struct ModelPricingTab: View {
         return custom.inputPerMillion != defaultPreset.inputPerMillion ||
                custom.cacheReadPerMillion != defaultPreset.cacheReadPerMillion ||
                custom.outputPerMillion != defaultPreset.outputPerMillion
+    }
+
+    @ViewBuilder
+    private func providerFilterOption(_ provider: String) -> some View {
+        Button {
+            selectedProvider = provider
+        } label: {
+            HStack {
+                Text(provider)
+                Spacer()
+                if selectedProvider == provider {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+            }
+        }
     }
 
     /// 识别模型归属的厂商名称
