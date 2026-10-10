@@ -12,7 +12,6 @@ struct ModelPricingTab: View {
     @State private var hoveredModelId: String?
     @State private var isProviderFilterHovered = false
     @State private var isRefreshHovered = false
-    @FocusState private var isExchangeRateFocused: Bool
 
     private let store: PricingSettingsStore
 
@@ -34,68 +33,6 @@ struct ModelPricingTab: View {
                 Text("模型费率与成本换算")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(AppTheme.primaryText)
-
-                // 将币种与汇率作为轻量设置行，避免在表格外再叠一层卡片。
-                HStack(spacing: 16) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("展示币种")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(AppTheme.secondaryText)
-
-                        Picker("", selection: $preferences.targetCurrency) {
-                            ForEach(PricingCurrency.allCases) { currency in
-                                Text(currency.displayName).tag(currency)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .controlSize(.small)
-                        .frame(width: 220)
-                        .accessibilityLabel("展示币种")
-                        .onChange(of: preferences.targetCurrency) { _ in save() }
-                    }
-
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: 6) {
-                        Text("美元兑人民币")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(AppTheme.secondaryText)
-
-                        HStack(spacing: 6) {
-                            Text("1 USD =")
-                                .font(.system(size: 11, weight: .regular, design: .monospaced))
-                                .foregroundStyle(AppTheme.secondaryText)
-
-                            TextField("7.20", value: $preferences.usdToCnyRate, format: .number)
-                                .textFieldStyle(.plain)
-                                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                .foregroundStyle(AppTheme.primaryText)
-                                .padding(.horizontal, 8)
-                                .frame(width: 64, height: 26)
-                                .focused($isExchangeRateFocused)
-                                .background(
-                                    RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-                                        .fill(AppTheme.elevated)
-                                        .overlay {
-                                            RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-                                                .stroke(isExchangeRateFocused ? AppTheme.hairlineBright : AppTheme.hairline, lineWidth: 0.75)
-                                        }
-                                )
-                                .accessibilityLabel("美元兑人民币汇率")
-                                .onSubmit { save() }
-
-                            Text("CNY")
-                                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                                .foregroundStyle(AppTheme.secondaryText)
-                        }
-                    }
-                }
-                .padding(.bottom, 12)
-                .overlay(alignment: .bottom) {
-                    Rectangle()
-                        .fill(AppTheme.hairline)
-                        .frame(height: 0.75)
-                }
 
                 // 主数据表格
                 VStack(alignment: .leading, spacing: 0) {
