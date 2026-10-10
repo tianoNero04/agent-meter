@@ -10,7 +10,7 @@
 - App 图标源文件位于 `assets/image.png`，打包脚本会自动按照 Apple HIG 规范裁切为标准纯净连续超椭圆圆角（Squircle），与系统 Dock 原生材质与投影无缝融合，生成多尺寸 `AppIcon.icns` 并写入 App 包。弹窗 Logo 使用 `Sources/AgentUsageDashboard/Resources/AgentMeterLogoWhite.png` 的透明白色版本，不改变 App 图标源。
 - 视觉概念图归档在 `assets/references/agent-concept.png`；弹窗界面完全采用原生 SwiftUI 矢量布局与暗色材质绘制，不使用静态背景贴图。
 - 点击弹窗左上角 Logo 或右上角控制台按钮，可唤起原生“Agent Meter 控制中心”总窗口；窗口打开时动态在 Dock 显示图标，关闭后无缝恢复为轻量纯菜单栏模式。
-- 控制中心采用固定 220pt 现代深色侧边栏，内置 5 个面板：通用系统设置（开机自启）、服务商管理与按需通道测速、主流模型定价矩阵与成本换算（支持按服务商筛选、从 `models.dev` 同步官方最新费率并标示本机使用模型；费率可行内编辑，恢复按钮仅在本机价格不同于官方基准时显示；成本统计使用已保存的币种与汇率偏好）、本地原生日历重置提醒与低额度预警、Prompt Caching 缓存统计。
+- 控制中心采用固定 220pt 现代深色侧边栏，内置 5 个面板：通用系统设置（开机自启）、服务商管理与按需通道测速、主流模型定价矩阵与成本换算（支持按服务商筛选，Gemini/Gemma 模型归类为 Google；从 `models.dev` 同步官方最新费率并标示本机使用模型；费率可行内编辑，恢复按钮仅在本机价格不同于官方基准时显示；成本统计使用已保存的币种与汇率偏好）、本地原生日历重置提醒与低额度预警、Prompt Caching 缓存统计。
 - 杂志风与国际主义设计（Swiss Style）：深墨黑 `#0A0C10`、网格表面 `#11151C`、`0.75pt` 发丝线与微型 20 格精密分段能量标尺。
 - 真实多模型动态加权计费：精准匹配 2026 年最新主流模型（如 `gpt-5.6-luna`、`gpt-5.6-sol`、`gpt-5.5`、`k3-256k`、`kimi-for-coding` 等），智能剔除组织前缀与别名映射；监控大盘按本地各模型实际消耗比例进行精确加权成本与缓存节省换算，杜绝老旧单一模型硬编码带来的费率失真。
 - Codex / Kimi 账号额度：仿照 `cc-switch` 模式，优先通过轻量级 HTTPS 直连接口（读取本地 Keychain 或 `~/.codex/auth.json`、`~/.kimi-code/credentials/kimi-code.json` 凭据直接请求官方后端，支持静默自动刷新），百毫秒级响应且无子进程开销；Codex 直连未果时平滑降级至 `codex app-server`。

@@ -23,10 +23,10 @@ struct ModelPricingTab: View {
 
     var body: some View {
         let pricings = displayedPricings
-        let providerNames = Array(Set(pricings.map { detectProviderName(for: $0.modelName) })).sorted()
+        let providerNames = Array(Set(pricings.map { PricingProviderClassifier.providerName(for: $0.modelName) })).sorted()
         let visiblePricings = selectedProvider == "全部服务商"
             ? pricings
-            : pricings.filter { detectProviderName(for: $0.modelName) == selectedProvider }
+            : pricings.filter { PricingProviderClassifier.providerName(for: $0.modelName) == selectedProvider }
 
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
@@ -199,7 +199,7 @@ struct ModelPricingTab: View {
     // MARK: - 单行渲染
     private func tableRow(for item: ModelPricing) -> some View {
         let hasLocalOverride = hasLocalPriceOverride(item)
-        let providerName = detectProviderName(for: item.modelName)
+        let providerName = PricingProviderClassifier.providerName(for: item.modelName)
         let isHovered = hoveredModelId == item.id
 
         return HStack(spacing: 10) {
@@ -307,27 +307,6 @@ struct ModelPricingTab: View {
                 }
             }
         }
-    }
-
-    /// 识别模型归属的厂商名称
-    private func detectProviderName(for modelName: String) -> String {
-        let clean = modelName.lowercased()
-        if clean.contains("gpt") || clean.contains("o1") || clean.contains("o3") || clean.contains("codex") {
-            return "OpenAI"
-        }
-        if clean.contains("kimi") || clean.contains("moonshot") {
-            return "Moonshot"
-        }
-        if clean.contains("claude") {
-            return "Anthropic"
-        }
-        if clean.contains("deepseek") {
-            return "DeepSeek"
-        }
-        if clean.contains("grok") {
-            return "xAI"
-        }
-        return "通用"
     }
 
     private func updatePrice(for item: ModelPricing, input: Double? = nil, cache: Double? = nil, output: Double? = nil) {
