@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// 模型单价与费率矩阵配置面板（仿照 ReactBits Pro data-table-3 设计风格）
-/// 支持深色卡片式排版、状态圆点指示器、以及行内可编辑药丸单元格（Inline Editable Pill Cells）
+/// 模型单价与费率矩阵配置面板
+/// 支持按服务商筛选、行内编辑价格，以及恢复到最近同步的官方价格。
 struct ModelPricingTab: View {
     @ObservedObject var model: DashboardModel
     @State private var preferences: PricingPreferences
@@ -201,9 +201,6 @@ struct ModelPricingTab: View {
                         Text("服务商")
                             .frame(width: 78, alignment: .leading)
 
-                        Text("状态")
-                            .frame(width: 78, alignment: .leading)
-
                         Text("输入 (1M)")
                             .frame(width: 76, alignment: .center)
 
@@ -264,7 +261,7 @@ struct ModelPricingTab: View {
 
     // MARK: - 单行渲染
     private func tableRow(for item: ModelPricing) -> some View {
-        let isCustomized = isLocallyCustomized(item)
+        let hasLocalOverride = hasLocalPriceOverride(item)
         let providerName = detectProviderName(for: item.modelName)
         let isHovered = hoveredModelId == item.id
 
@@ -281,19 +278,7 @@ struct ModelPricingTab: View {
                 .foregroundStyle(AppTheme.secondaryText)
                 .frame(width: 78, alignment: .leading)
 
-            // 3. 状态列（对齐 ReactBits 圆点指示器）
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(isCustomized ? Color(red: 251/255, green: 146/255, blue: 60/255) : Color(red: 74/255, green: 222/255, blue: 128/255))
-                    .frame(width: 6, height: 6)
-
-                Text(isCustomized ? "已自定义" : "官方预设")
-                    .font(.system(size: 11, weight: isCustomized ? .medium : .regular))
-                    .foregroundStyle(isCustomized ? AppTheme.primaryText : AppTheme.secondaryText)
-            }
-            .frame(width: 78, alignment: .leading)
-
-            // 4. 输入单价药丸单元格
+            // 3. 输入单价药丸单元格
             InlineEditablePillCell(
                 value: item.inputPerMillion,
                 symbol: item.baseCurrency.symbol,
@@ -302,7 +287,7 @@ struct ModelPricingTab: View {
                 updatePrice(for: item, input: newPrice)
             }
 
-            // 5. 缓存读取单价药丸单元格
+            // 4. 缓存读取单价药丸单元格
             InlineEditablePillCell(
                 value: item.cacheReadPerMillion,
                 symbol: item.baseCurrency.symbol,
@@ -312,7 +297,7 @@ struct ModelPricingTab: View {
                 updatePrice(for: item, cache: newPrice)
             }
 
-            // 6. 输出单价药丸单元格
+            // 5. 输出单价药丸单元格
             InlineEditablePillCell(
                 value: item.outputPerMillion,
                 symbol: item.baseCurrency.symbol,
@@ -321,11 +306,11 @@ struct ModelPricingTab: View {
                 updatePrice(for: item, output: newPrice)
             }
 
-            // 7. 重置操作按钮（仅在自定义时显示撤销按钮）
+            // 6. 仅在本机价格不同于官方基准时显示恢复按钮
             ZStack {
-                if isCustomized {
+                if hasLocalOverride {
                     Button {
-                        resetToDefault(for: item)
+                        restoreOfficialPricing(for: item)
                     } label: {
                         Image(systemName: "arrow.uturn.backward")
                             .font(.system(size: 10, weight: .semibold))
@@ -335,7 +320,7 @@ struct ModelPricingTab: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .help("恢复为官方预设单价")
+                    .help("恢复为最新官方单价")
                 }
             }
             .frame(width: 24, alignment: .center)
@@ -349,15 +334,26 @@ struct ModelPricingTab: View {
     }
 
     // MARK: - 辅助计算与操作
-    private func isLocallyCustomized(_ item: ModelPricing) -> Bool {
-        let key = item.modelName.lowercased()
-        guard let custom = preferences.customPricings[key] else { return false }
-        guard let defaultPreset = DefaultModelPricings.presets.first(where: { $0.modelName.lowercased() == key }) else {
-            return true
-        }
-        return custom.inputPerMillion != defaultPreset.inputPerMillion ||
-               custom.cacheReadPerMillion != defaultPreset.cacheReadPerMillion ||
-               custom.outputPerMillion != defaultPreset.outputPerMillion
+    private func hasLocalPriceOverride(_ item: ModelPricing) -> Bool {
+        let key = DefaultModelPricings.normalizeModelName(item.modelName)
+        guard let override = preferences.customOverrides[key],
+              let official = officialPricing(for: key) else { return false }
+        return !hasSameRates(override, official)
+    }
+
+    private func officialPricing(for modelName: String) -> ModelPricing? {
+        let key = DefaultModelPricings.normalizeModelName(modelName)
+        return preferences.syncedPricings[key]
+            ?? DefaultModelPricings.presets.first(where: {
+                DefaultModelPricings.normalizeModelName($0.modelName) == key
+            })
+    }
+
+    private func hasSameRates(_ lhs: ModelPricing, _ rhs: ModelPricing) -> Bool {
+        lhs.inputPerMillion == rhs.inputPerMillion &&
+        lhs.cacheReadPerMillion == rhs.cacheReadPerMillion &&
+        lhs.outputPerMillion == rhs.outputPerMillion &&
+        lhs.baseCurrency == rhs.baseCurrency
     }
 
     @ViewBuilder
@@ -398,19 +394,23 @@ struct ModelPricingTab: View {
     }
 
     private func updatePrice(for item: ModelPricing, input: Double? = nil, cache: Double? = nil, output: Double? = nil) {
-        let key = item.modelName.lowercased()
-        var current = preferences.customPricings[key] ?? item
+        let key = DefaultModelPricings.normalizeModelName(item.modelName)
+        var current = preferences.customOverrides[key] ?? item
         if let input = input { current.inputPerMillion = max(0, input) }
         if let cache = cache { current.cacheReadPerMillion = max(0, cache) }
         if let output = output { current.outputPerMillion = max(0, output) }
 
-        preferences.customPricings[key] = current
+        if let official = officialPricing(for: key), hasSameRates(current, official) {
+            preferences.customOverrides.removeValue(forKey: key)
+        } else {
+            preferences.customOverrides[key] = current
+        }
         save()
     }
 
-    private func resetToDefault(for item: ModelPricing) {
-        let key = item.modelName.lowercased()
-        preferences.customPricings.removeValue(forKey: key)
+    private func restoreOfficialPricing(for item: ModelPricing) {
+        let key = DefaultModelPricings.normalizeModelName(item.modelName)
+        preferences.customOverrides.removeValue(forKey: key)
         save()
     }
 
@@ -426,8 +426,16 @@ struct ModelPricingTab: View {
             map[canonical] = item
         }
 
-        // 2. 再用自定义/最新同步覆盖
-        for (_, p) in preferences.customPricings {
+        // 2. 最近一次成功同步的官方价格覆盖内置预设
+        for p in preferences.syncedPricings.values {
+            let canonical = DefaultModelPricings.normalizeModelName(p.modelName)
+            var item = p
+            item.modelName = canonical
+            map[canonical] = item
+        }
+
+        // 3. 本机手动价格覆盖官方价格
+        for p in preferences.customOverrides.values {
             let canonical = DefaultModelPricings.normalizeModelName(p.modelName)
             var item = p
             item.modelName = canonical

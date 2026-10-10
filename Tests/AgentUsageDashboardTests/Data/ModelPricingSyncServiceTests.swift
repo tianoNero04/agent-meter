@@ -84,7 +84,7 @@ final class ModelPricingSyncServiceTests: XCTestCase {
         }
     }
 
-    func testSyncAndSaveMergesAndPersists() async throws {
+    func testSyncReplacesOfficialBaselineAndPreservesManualOverride() async throws {
         // 创建内存 Mock Store
         final class FakePricingStore: PricingSettingsStore, @unchecked Sendable {
             var prefs = PricingPreferences()
@@ -93,6 +93,24 @@ final class ModelPricingSyncServiceTests: XCTestCase {
         }
 
         let store = FakePricingStore()
+        store.prefs.syncedPricings["gpt-5.6-luna"] = ModelPricing(
+            modelName: "gpt-5.6-luna",
+            inputPerMillion: 0.3,
+            cacheReadPerMillion: 0.03,
+            outputPerMillion: 1.5
+        )
+        store.prefs.syncedPricings["stale-model"] = ModelPricing(
+            modelName: "stale-model",
+            inputPerMillion: 1,
+            cacheReadPerMillion: 0.2,
+            outputPerMillion: 3
+        )
+        store.prefs.customOverrides["gpt-5.6-luna"] = ModelPricing(
+            modelName: "gpt-5.6-luna",
+            inputPerMillion: 0.5,
+            cacheReadPerMillion: 0.02,
+            outputPerMillion: 1.2
+        )
 
         // 构造自定义 URLProtocol 支持模拟 HTTP 响应
         let config = URLSessionConfiguration.ephemeral
@@ -117,7 +135,10 @@ final class ModelPricingSyncServiceTests: XCTestCase {
         let result = try await service.syncAndSave(store: store)
 
         XCTAssertEqual(result.totalCount, 1)
-        XCTAssertEqual(store.prefs.customPricings["gpt-5.6-luna"]?.inputPerMillion, 0.2)
+        XCTAssertEqual(result.updatedCount, 2)
+        XCTAssertEqual(store.prefs.syncedPricings["gpt-5.6-luna"]?.inputPerMillion, 0.2)
+        XCTAssertNil(store.prefs.syncedPricings["stale-model"])
+        XCTAssertEqual(store.prefs.customOverrides["gpt-5.6-luna"]?.inputPerMillion, 0.5)
     }
 }
 

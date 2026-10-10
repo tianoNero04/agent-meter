@@ -62,8 +62,8 @@ final class PricingModelsTests: XCTestCase {
         let gpt4oPricing = prefs.pricing(for: "gpt-4o-2024-08-06")
         XCTAssertEqual(gpt4oPricing.inputPerMillion, 2.50)
 
-        // 匹配自定义模型
-        prefs.customPricings["custom-mini"] = ModelPricing(
+        // 匹配本机手动覆盖
+        prefs.customOverrides["custom-mini"] = ModelPricing(
             modelName: "custom-mini",
             inputPerMillion: 0.50,
             cacheReadPerMillion: 0.10,
@@ -115,7 +115,7 @@ final class PricingModelsTests: XCTestCase {
         let store = UserDefaultsPricingSettingsStore(suiteName: suite)
 
         var prefs = PricingPreferences(targetCurrency: .usd, usdToCnyRate: 7.25)
-        prefs.customPricings["my-model"] = ModelPricing(
+        prefs.customOverrides["my-model"] = ModelPricing(
             modelName: "my-model",
             inputPerMillion: 5.0,
             cacheReadPerMillion: 1.0,
@@ -127,7 +127,42 @@ final class PricingModelsTests: XCTestCase {
         let loaded = store.load()
         XCTAssertEqual(loaded.targetCurrency, .usd)
         XCTAssertEqual(loaded.usdToCnyRate, 7.25)
-        XCTAssertEqual(loaded.customPricings["my-model"]?.inputPerMillion, 5.0)
+        XCTAssertEqual(loaded.customOverrides["my-model"]?.inputPerMillion, 5.0)
+
+        UserDefaults.standard.removePersistentDomain(forName: suite)
+    }
+
+    func testPricingStoreDiscardsLegacyMixedPricesAndPreservesDisplayPreferences() throws {
+        let suite = "test.pricing.migration.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let legacyData = """
+        {
+          "targetCurrency": "USD",
+          "usdToCnyRate": 7.25,
+          "customPricings": {
+            "my-model": {
+              "modelName": "my-model",
+              "inputPerMillion": 5.0,
+              "cacheReadPerMillion": 1.0,
+              "outputPerMillion": 10.0,
+              "baseCurrency": "USD"
+            }
+          }
+        }
+        """.data(using: .utf8)!
+        defaults.set(legacyData, forKey: "pricingPreferences_v1")
+        let store = UserDefaultsPricingSettingsStore(suiteName: suite)
+
+        let loaded = store.load()
+
+        XCTAssertEqual(loaded.targetCurrency, .usd)
+        XCTAssertEqual(loaded.usdToCnyRate, 7.25)
+        XCTAssertTrue(loaded.syncedPricings.isEmpty)
+        XCTAssertTrue(loaded.customOverrides.isEmpty)
+        let migratedData = try XCTUnwrap(defaults.data(forKey: "pricingPreferences_v1"))
+        let migratedObject = try XCTUnwrap(JSONSerialization.jsonObject(with: migratedData) as? [String: Any])
+        XCTAssertNil(migratedObject["customPricings"])
+        XCTAssertEqual(migratedObject["schemaVersion"] as? Int, PricingPreferences.currentSchemaVersion)
 
         UserDefaults.standard.removePersistentDomain(forName: suite)
     }

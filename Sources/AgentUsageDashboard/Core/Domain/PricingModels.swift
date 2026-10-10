@@ -163,33 +163,86 @@ enum DefaultModelPricings {
 
 /// 用户全局模型计费偏好设置值对象
 struct PricingPreferences: Codable, Equatable, Sendable {
+    static let currentSchemaVersion = 2
+
+    /// 持久化结构版本；旧版本中的混合价格表会在存储层升级时丢弃。
+    private(set) var schemaVersion: Int
     /// 用户选定的展示币种，默认人民币 CNY
     var targetCurrency: PricingCurrency
     /// 美元对人民币基准参考汇率，默认 7.20
     var usdToCnyRate: Double
-    /// 用户自定义或调整后的模型单价映射表（键为小写 modelName）
-    var customPricings: [String: ModelPricing]
+    /// 最近一次成功同步得到的官方价格基准（键为规范化 modelName）
+    var syncedPricings: [String: ModelPricing]
+    /// 用户在本机手动修改的覆盖价格（键为规范化 modelName）
+    var customOverrides: [String: ModelPricing]
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case targetCurrency
+        case usdToCnyRate
+        case syncedPricings
+        case customOverrides
+    }
 
     init(
         targetCurrency: PricingCurrency = .cny,
         usdToCnyRate: Double = 7.20,
-        customPricings: [String: ModelPricing] = [:]
+        syncedPricings: [String: ModelPricing] = [:],
+        customOverrides: [String: ModelPricing] = [:]
     ) {
+        self.schemaVersion = Self.currentSchemaVersion
         self.targetCurrency = targetCurrency
         self.usdToCnyRate = usdToCnyRate
-        self.customPricings = customPricings
+        self.syncedPricings = syncedPricings
+        self.customOverrides = customOverrides
     }
 
-    /// 自动清洗并规范化自定义模型字典，去除历史写入的组织别名与重复项
-    mutating func sanitizeCustomPricings() {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        targetCurrency = try container.decodeIfPresent(PricingCurrency.self, forKey: .targetCurrency) ?? .cny
+        usdToCnyRate = try container.decodeIfPresent(Double.self, forKey: .usdToCnyRate) ?? 7.20
+
+        if schemaVersion >= Self.currentSchemaVersion {
+            syncedPricings = try container.decodeIfPresent([String: ModelPricing].self, forKey: .syncedPricings) ?? [:]
+            customOverrides = try container.decodeIfPresent([String: ModelPricing].self, forKey: .customOverrides) ?? [:]
+        } else {
+            syncedPricings = [:]
+            customOverrides = [:]
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(Self.currentSchemaVersion, forKey: .schemaVersion)
+        try container.encode(targetCurrency, forKey: .targetCurrency)
+        try container.encode(usdToCnyRate, forKey: .usdToCnyRate)
+        try container.encode(syncedPricings, forKey: .syncedPricings)
+        try container.encode(customOverrides, forKey: .customOverrides)
+    }
+
+    /// 旧版本价格表混合了同步数据和本地改价，无法安全区分，因此只保留展示偏好。
+    mutating func discardLegacyPricingData() {
+        syncedPricings = [:]
+        customOverrides = [:]
+        schemaVersion = Self.currentSchemaVersion
+    }
+
+    /// 规范化同步基准和手动覆盖表中的模型名称。
+    mutating func sanitizePricings() {
+        syncedPricings = Self.normalizedPricingMap(syncedPricings)
+        customOverrides = Self.normalizedPricingMap(customOverrides)
+    }
+
+    private static func normalizedPricingMap(_ pricings: [String: ModelPricing]) -> [String: ModelPricing] {
         var cleanMap: [String: ModelPricing] = [:]
-        for (_, pricing) in customPricings {
+        for pricing in pricings.values {
             let canonical = DefaultModelPricings.normalizeModelName(pricing.modelName)
             var normalizedItem = pricing
             normalizedItem.modelName = canonical
             cleanMap[canonical] = normalizedItem
         }
-        self.customPricings = cleanMap
+        return cleanMap
     }
 
     /// 获取特定模型的匹配单价规则（具备智能别名归一化、层级化精准优先与前缀模糊回退）
@@ -197,22 +250,27 @@ struct PricingPreferences: Codable, Equatable, Sendable {
         let cleanName = modelName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         let normalized = DefaultModelPricings.normalizeModelName(cleanName)
 
-        // 1. 查找精确自定义匹配（原名或归一化名）
-        if let custom = customPricings[cleanName] ?? customPricings[normalized] {
+        // 1. 本机手动覆盖优先于任何官方价格
+        if let custom = customOverrides[cleanName] ?? customOverrides[normalized] {
             return custom
         }
 
-        // 2. 查找内置预设的精确匹配（原名）
+        // 2. 最近一次成功同步的官方价格
+        if let synced = syncedPricings[cleanName] ?? syncedPricings[normalized] {
+            return synced
+        }
+
+        // 3. 查找内置预设的精确匹配（原名）
         if let preset = DefaultModelPricings.presets.first(where: { $0.modelName.lowercased() == cleanName }) {
             return preset
         }
 
-        // 3. 查找内置预设的归一化名精确匹配
+        // 4. 查找内置预设的归一化名精确匹配
         if let preset = DefaultModelPricings.presets.first(where: { $0.modelName.lowercased() == normalized }) {
             return preset
         }
 
-        // 4. 前缀与包含模糊匹配（优先匹配字符更长、更精准的预设）
+        // 5. 前缀与包含模糊匹配（优先匹配字符更长、更精准的预设）
         let matches = DefaultModelPricings.presets.filter { preset in
             let pName = preset.modelName.lowercased()
             return cleanName.hasPrefix(pName) ||
@@ -224,7 +282,7 @@ struct PricingPreferences: Codable, Equatable, Sendable {
             return bestMatch
         }
 
-        // 5. 兜底
+        // 6. 兜底
         return DefaultModelPricings.fallback
     }
 }
