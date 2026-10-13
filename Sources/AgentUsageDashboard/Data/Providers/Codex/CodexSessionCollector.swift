@@ -10,16 +10,21 @@ struct CodexLocalData {
 }
 
 /// Codex 本机会话采集器（对齐 cc-switch 的 session_usage_codex.rs 提取算法）：
-/// 1. 按文件缓存解析结果（修改时间 + 文件大小为键），仅变动文件重新解析；
+/// 1. 按文件身份缓存汇总结果，完整行后的追加只读取新字节；替换或截断时重建；
 /// 2. 支持 last_token_usage 与 total_token_usage 增量计算，准确统计 input / cached / output / reasoning；
 /// 3. 按时间戳聚合每日 Token 消耗生成 7 日历史分桶。
 final class CodexSessionCollector {
     private struct CachedFile {
         var modificationDate: Date?
         var fileSize: Int?
+        var fileIdentifier: NSObject?
+        var tailSignature: Data?
+        var canAppend = false
         var usage: TokenUsage = .zero
-        var dailyEvents: [(date: Date, usage: TokenUsage)] = []
+        var dailyTotals: [Date: Int] = [:]
         var modelTotals: [String: TokenUsage] = [:]
+        var currentModel: String?
+        var previousCumulativeUsage: TokenUsage?
         var latestModel: String?
         var latestRateLimitDate: Date?
         var latestWindows: [RateLimitWindow] = []
@@ -29,10 +34,13 @@ final class CodexSessionCollector {
     let homeURL: URL
     private let sessionsURL: URL
     private let lock = NSLock()
+    private let collectionLock = NSLock()
     private var cache: [String: CachedFile] = [:]
 
-    /// 实际执行过完整解析的文件数，供测试验证增量行为。
+    /// 实际执行过文件读取/解析的批次数，用于诊断增量行为。
     private(set) var parsedFileCount = 0
+    /// 实际读取的日志字节数，用于诊断增量采集成本（不保存日志正文）。
+    private(set) var parsedByteCount: UInt64 = 0
 
     init(homeURL: URL = FileManager.default.homeDirectoryForCurrentUser) {
         self.homeURL = homeURL
@@ -40,6 +48,8 @@ final class CodexSessionCollector {
     }
 
     func collect() -> CodexLocalData {
+        collectionLock.lock()
+        defer { collectionLock.unlock() }
         let manager = FileManager.default
         guard let enumerator = manager.enumerator(
             at: sessionsURL,
@@ -50,7 +60,7 @@ final class CodexSessionCollector {
         }
 
         var total = TokenUsage.zero
-        var dailyEvents: [(date: Date, usage: TokenUsage)] = []
+        var dailyTotals: [Date: Int] = [:]
         var modelTotals: [String: TokenUsage] = [:]
         var latestWindows: [RateLimitWindow] = []
         var latestRateLimitDate: Date?
@@ -59,15 +69,16 @@ final class CodexSessionCollector {
 
         for case let fileURL as URL in enumerator where fileURL.pathExtension == "jsonl" {
             seen.insert(fileURL.path)
-            let values = try? fileURL.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+            let values = try? fileURL.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey, .fileResourceIdentifierKey])
             let file = cachedFile(
                 for: fileURL,
                 modificationDate: values?.contentModificationDate,
-                fileSize: values?.fileSize
+                fileSize: values?.fileSize,
+                fileIdentifier: values?.fileResourceIdentifier as? NSObject
             )
 
             total = total + file.usage
-            dailyEvents.append(contentsOf: file.dailyEvents)
+            for (day, tokens) in file.dailyTotals { dailyTotals[day, default: 0] += tokens }
             for (model, usage) in file.modelTotals {
                 modelTotals[model, default: .zero] = modelTotals[model, default: .zero] + usage
             }
@@ -87,30 +98,50 @@ final class CodexSessionCollector {
 
         return CodexLocalData(
             tokenUsage: total,
-            dailyBuckets: DailyTokenAggregation.buckets(from: dailyEvents),
+            dailyBuckets: dailyTotals.map { DailyTokenBucket(startDate: $0.key, tokens: $0.value) }
+                .sorted { $0.startDate < $1.startDate },
             models: models,
             windows: latestWindows,
             latestModel: latestModel
         )
     }
 
-    private func cachedFile(for url: URL, modificationDate: Date?, fileSize: Int?) -> CachedFile {
+    private func cachedFile(for url: URL, modificationDate: Date?, fileSize: Int?, fileIdentifier: NSObject?) -> CachedFile {
         lock.lock()
-        let hit = cache[url.path].flatMap {
-            $0.modificationDate == modificationDate && $0.fileSize == fileSize ? $0 : nil
-        }
+        let prior = cache[url.path]
         lock.unlock()
-        if let hit { return hit }
+        let sameFile = fileIdentifier != nil && prior?.fileIdentifier == fileIdentifier
+        if let prior, sameFile, prior.modificationDate == modificationDate, prior.fileSize == fileSize { return prior }
 
-        var parsed = parseFile(url, fileDate: modificationDate)
+        var offset: UInt64 = 0
+        if let prior, sameFile, prior.canAppend, let oldSize = prior.fileSize,
+           let fileSize, fileSize > oldSize,
+           let signature = prior.tailSignature, signature == tailSignature(url, endingAt: oldSize) {
+            offset = UInt64(oldSize)
+        }
+
+        var parsed = parseFile(url, fileDate: modificationDate, initial: offset > 0 ? prior : nil,
+                               startOffset: offset, readLimit: fileSize.map { UInt64($0) - offset })
         parsed.modificationDate = modificationDate
         parsed.fileSize = fileSize
+        parsed.fileIdentifier = fileIdentifier
+        parsed.tailSignature = fileSize.flatMap { tailSignature(url, endingAt: $0) }
 
         lock.lock()
         cache[url.path] = parsed
         parsedFileCount += 1
         lock.unlock()
         return parsed
+    }
+
+    private func tailSignature(_ url: URL, endingAt size: Int) -> Data? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        do {
+            let length = min(size, 64)
+            try handle.seek(toOffset: UInt64(size - length))
+            return try handle.read(upToCount: length)
+        } catch { return nil }
     }
 
     private func pruneCache(keeping seen: Set<String>) {
@@ -122,17 +153,17 @@ final class CodexSessionCollector {
     private static let tokenCountMarker = Data("\"token_count\"".utf8)
     private static let turnContextMarker = Data("\"turn_context\"".utf8)
 
-    private func parseFile(_ fileURL: URL, fileDate: Date?) -> CachedFile {
-        var result = CachedFile()
-        var currentModel: String?
-        var previousCumulativeUsage: TokenUsage? = nil
+    private func parseFile(_ fileURL: URL, fileDate: Date?, initial: CachedFile?, startOffset: UInt64, readLimit: UInt64?) -> CachedFile {
+        var result = initial ?? CachedFile()
+        var currentModel = result.currentModel
+        var previousCumulativeUsage = result.previousCumulativeUsage
 
         let fractionalTimestampFormatter = ISO8601DateFormatter()
         fractionalTimestampFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let timestampFormatter = ISO8601DateFormatter()
         timestampFormatter.formatOptions = [.withInternetDateTime]
 
-        let iterator = FileLineSequence(url: fileURL).makeIterator()
+        let iterator = FileLineSequence(url: fileURL, startOffset: startOffset, readLimit: readLimit).makeIterator()
         while let lineData = iterator.nextData() {
             // 粗筛优化：仅包含 token_count 或 turn_context 标记的行才进行 JSON 解析
             guard lineData.range(of: Self.tokenCountMarker) != nil
@@ -174,7 +205,8 @@ final class CodexSessionCollector {
                             .flatMap { fractionalTimestampFormatter.date(from: $0) ?? timestampFormatter.date(from: $0) }
                             ?? fileDate
                             ?? Date()
-                        result.dailyEvents.append((date: eventDate, usage: usage))
+                        let day = Calendar.current.startOfDay(for: eventDate)
+                        result.dailyTotals[day, default: 0] += usage.total
 
                         let model = currentModel ?? JSONSupport.string(payload["model"]) ?? "Codex"
                         result.modelTotals[model, default: .zero] = result.modelTotals[model, default: .zero] + usage
@@ -194,6 +226,10 @@ final class CodexSessionCollector {
                 }
             }
         }
+        parsedByteCount += iterator.bytesRead
+        result.currentModel = currentModel
+        result.previousCumulativeUsage = previousCumulativeUsage
+        result.canAppend = iterator.lastLineTerminated && readLimit == iterator.bytesRead
         return result
     }
 
