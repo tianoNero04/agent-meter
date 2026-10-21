@@ -218,20 +218,19 @@ struct MonitoringAggregator: Sendable {
             defaultModel: "gpt-5.6-luna",
             pricing: pricing
         )
-        let codexRequests = max(codexTokens > 0 ? 1 : 0, Int(round(Double(codexTokens) / 1200.0)))
 
         items.append(
             ProviderBreakdownItem(
                 provider: .codex,
                 displayName: "Codex (CLI & App Server)",
                 badgeText: "CODEX",
-                requestsCount: codexRequests,
                 inputTokens: codexUsage.input,
                 cachedTokens: codexUsage.cachedInput,
                 outputTokens: codexUsage.output,
                 totalTokens: codexTokens,
                 shareRatio: codexRatio,
-                estimatedCost: codexCost
+                estimatedCost: codexCost,
+                estimatedCacheSavings: estimatedSavings(tokens: codexTokens, usage: codexUsage, snapshot: codexSnapshot, defaultModel: "gpt-5.6-luna", pricing: pricing)
             )
         )
 
@@ -245,20 +244,19 @@ struct MonitoringAggregator: Sendable {
             defaultModel: "kimi-k3",
             pricing: pricing
         )
-        let kimiRequests = max(kimiTokens > 0 ? 1 : 0, Int(round(Double(kimiTokens) / 1500.0)))
 
         items.append(
             ProviderBreakdownItem(
                 provider: .kimiCode,
                 displayName: "Kimi Code (Moonshot API)",
                 badgeText: "KIMI",
-                requestsCount: kimiRequests,
                 inputTokens: kimiUsage.input,
                 cachedTokens: kimiUsage.cachedInput,
                 outputTokens: kimiUsage.output,
                 totalTokens: kimiTokens,
                 shareRatio: kimiRatio,
-                estimatedCost: kimiCost
+                estimatedCost: kimiCost,
+                estimatedCacheSavings: estimatedSavings(tokens: kimiTokens, usage: kimiUsage, snapshot: kimiSnapshot, defaultModel: "kimi-k3", pricing: pricing)
             )
         )
 
@@ -311,17 +309,50 @@ struct MonitoringAggregator: Sendable {
         guard totalTokens > 0 else { return .zero }
         let snapTotal = snapshotUsage.total
         guard snapTotal > 0 else {
-            // 若没有历史详细记录，提供经验基线比例：60% input, 25% cache, 15% output
-            let input = Int(Double(totalTokens) * 0.60)
-            let cache = Int(Double(totalTokens) * 0.25)
-            let output = max(0, totalTokens - input - cache)
-            return TokenUsage(input: input, cachedInput: cache, output: output)
+            return TokenUsage(input: totalTokens)
         }
 
-        let input = Int(round(Double(totalTokens) * (Double(snapshotUsage.input) / Double(snapTotal))))
-        let cache = Int(round(Double(totalTokens) * (Double(snapshotUsage.cachedInput) / Double(snapTotal))))
+        let input = Int(Double(totalTokens) * (Double(snapshotUsage.input) / Double(snapTotal)))
+        let cache = min(totalTokens - input, Int(Double(totalTokens) * (Double(snapshotUsage.cachedInput) / Double(snapTotal))))
         let output = max(0, totalTokens - input - cache)
-        return TokenUsage(input: input, cachedInput: cache, output: output, reasoning: snapshotUsage.reasoning)
+        return TokenUsage(input: input, cachedInput: cache, output: output)
+    }
+
+    private func estimatedSavings(tokens: Int, usage: TokenUsage, snapshot: ProviderSnapshot, defaultModel: String, pricing: PricingPreferences) -> Double {
+        let observedTokens = snapshot.localModels.reduce(0) { $0 + $1.usage.total }
+        if observedTokens > 0 {
+            let savings = snapshot.localModels.reduce(0.0) { result, item in
+                result + pricing.pricing(for: item.model).calculateCacheSavings(for: item.usage, targetCurrency: pricing.targetCurrency, exchangeRate: pricing.usdToCnyRate)
+            }
+            return savings * Double(tokens) / Double(observedTokens)
+        }
+        return pricing.pricing(for: defaultModel).calculateCacheSavings(for: usage, targetCurrency: pricing.targetCurrency, exchangeRate: pricing.usdToCnyRate)
+    }
+
+    /// 摘要与明细共用同一组当前分桶，避免夹带累计快照的数据。
+    func aggregateBreakdown(buckets: [TokenDistributionBucket], selectedBucket: TokenDistributionBucket?) -> [ProviderBreakdownItem] {
+        let selected = selectedBucket.flatMap { selected in buckets.first { $0.id == selected.id } }
+        let rows = (selected.map { [$0] } ?? buckets).flatMap(\.providerBreakdown)
+        let total = rows.reduce(0) { $0 + $1.totalTokens }
+        let groups = Dictionary(grouping: rows, by: \.provider)
+        var result: [ProviderBreakdownItem] = []
+        for (provider, items) in groups {
+            var input = 0, cached = 0, output = 0, tokens = 0
+            var cost = 0.0, savings = 0.0
+            for item in items {
+                input += item.inputTokens
+                cached += item.cachedTokens
+                output += item.outputTokens
+                tokens += item.totalTokens
+                cost += item.estimatedCost
+                savings += item.estimatedCacheSavings
+            }
+            result.append(ProviderBreakdownItem(provider: provider, displayName: items[0].displayName, badgeText: items[0].badgeText,
+                inputTokens: input, cachedTokens: cached, outputTokens: output, totalTokens: tokens,
+                shareRatio: total > 0 ? Double(tokens) / Double(total) : 0,
+                estimatedCost: cost, estimatedCacheSavings: savings))
+        }
+        return result.sorted { $0.provider.rawValue < $1.provider.rawValue }
     }
 
     /// 计算指定分桶集合与当前选中下钻桶的核心看板摘要
@@ -330,69 +361,19 @@ struct MonitoringAggregator: Sendable {
         selectedBucket: TokenDistributionBucket?,
         pricing: PricingPreferences
     ) -> MonitoringOverviewSummary {
-        // 如果当前有下钻选中某一柱子，则指标卡展示该柱子的专项数据
-        if let selected = selectedBucket {
-            let totalTokens = selected.totalTokens
-
-            // 与前一个柱子计算环比变化率
-            var delta: Double? = nil
-            if let idx = buckets.firstIndex(where: { $0.id == selected.id }), idx > 0 {
-                let prev = buckets[idx - 1].totalTokens
-                if prev > 0 {
-                    delta = Double(totalTokens - prev) / Double(prev)
-                }
-            }
-
-            let totalCached = selected.providerBreakdown.reduce(0) { $0 + $1.cachedTokens }
-            let totalInput = selected.providerBreakdown.reduce(0) { $0 + $1.inputTokens }
-            let hitRate = (totalInput + totalCached) > 0 ? Double(totalCached) / Double(totalInput + totalCached) : 0.0
-
-            let totalCost = selected.providerBreakdown.reduce(0.0) { $0 + $1.estimatedCost }
-            let totalRequests = selected.providerBreakdown.reduce(0) { $0 + $1.requestsCount }
-
-            // 计算节省金额（按 80% 节省基准估算）
-            let cacheSavings = (Double(totalCached) / 1_000_000.0) * 2.0 * (pricing.targetCurrency == .cny ? pricing.usdToCnyRate : 1.0)
-            let formattedSavings = String(format: "%@%.2f", pricing.targetCurrency.symbol, cacheSavings)
-
-            return MonitoringOverviewSummary(
-                totalTokens: totalTokens,
-                tokensDeltaRatio: delta,
-                cacheHitRate: hitRate,
-                cacheSavingsDisplay: formattedSavings,
-                totalEstimatedCost: totalCost,
-                totalRequestsCount: totalRequests
-            )
-        }
-
-        // 默认全局概览汇总：汇总所有柱子
-        let totalTokens = buckets.reduce(0) { $0 + $1.totalTokens }
-
-        // 计算最后一桶与倒数第二桶的环比变化
+        let selected = selectedBucket.flatMap { selected in buckets.first { $0.id == selected.id } }
+        let rows = aggregateBreakdown(buckets: buckets, selectedBucket: selected)
+        let totalTokens = (selected.map { [$0] } ?? buckets).reduce(0) { $0 + $1.totalTokens }
+        let index = selected.flatMap { selected in buckets.firstIndex { $0.id == selected.id } } ?? (buckets.count - 1)
         var delta: Double? = nil
-        if buckets.count >= 2 {
-            let last = buckets[buckets.count - 1].totalTokens
-            let prev = buckets[buckets.count - 2].totalTokens
-            if prev > 0 {
-                delta = Double(last - prev) / Double(prev)
-            }
+        if index > 0, buckets[index - 1].totalTokens > 0 {
+            let previous = buckets[index - 1].totalTokens
+            delta = Double(buckets[index].totalTokens - previous) / Double(previous)
         }
-
-        var totalCached = 0
-        var totalInput = 0
-        var totalCost = 0.0
-        var totalRequests = 0
-
-        for b in buckets {
-            for item in b.providerBreakdown {
-                totalCached += item.cachedTokens
-                totalInput += item.inputTokens
-                totalCost += item.estimatedCost
-                totalRequests += item.requestsCount
-            }
-        }
-
+        let totalCached = rows.reduce(0) { $0 + $1.cachedTokens }
+        let totalInput = rows.reduce(0) { $0 + $1.inputTokens }
         let hitRate = (totalInput + totalCached) > 0 ? Double(totalCached) / Double(totalInput + totalCached) : 0.0
-        let cacheSavings = (Double(totalCached) / 1_000_000.0) * 2.0 * (pricing.targetCurrency == .cny ? pricing.usdToCnyRate : 1.0)
+        let cacheSavings = rows.reduce(0.0) { $0 + $1.estimatedCacheSavings }
         let formattedSavings = String(format: "%@%.2f", pricing.targetCurrency.symbol, cacheSavings)
 
         return MonitoringOverviewSummary(
@@ -400,8 +381,8 @@ struct MonitoringAggregator: Sendable {
             tokensDeltaRatio: delta,
             cacheHitRate: hitRate,
             cacheSavingsDisplay: formattedSavings,
-            totalEstimatedCost: totalCost,
-            totalRequestsCount: totalRequests
+            totalEstimatedCost: rows.reduce(0) { $0 + $1.estimatedCost },
+            totalRequestsCount: nil
         )
     }
 }

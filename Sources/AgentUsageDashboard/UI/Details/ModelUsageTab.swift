@@ -72,7 +72,7 @@ struct ModelUsageTab: View {
                 kpiSummaryCardsView
 
                 // 3. 模型消耗排行矩阵大卡片
-                rankingLeaderboardCardView
+                AdaptiveTable(minimumWidth: 960) { rankingLeaderboardCardView }
 
                 // 4. 对账机制与数据边界卡片
                 reconciliationNoticeCardView
@@ -113,33 +113,13 @@ struct ModelUsageTab: View {
 
             Spacer()
 
-            // 快捷服务商切换胶囊（仅在有多个启用的服务商时显示）
+            // 菜单选择器在窄窗口和多个服务商下都保留完整名称。
             if model.navigation.visibleProviders.count > 1 {
-                HStack(spacing: 3) {
-                    ForEach(model.navigation.visibleProviders, id: \.self) { provider in
-                        let isSelected = provider == activeProvider
-                        Button {
-                            selectedProviderState = provider
-                        } label: {
-                            Text(provider.displayName)
-                                .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
-                                .foregroundStyle(isSelected ? AppTheme.primaryText : AppTheme.secondaryText)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 4)
-                                        .fill(isSelected ? Color.white.opacity(0.12) : Color.clear)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
+                Picker("服务商", selection: Binding(get: { activeProvider }, set: { selectedProviderState = $0 })) {
+                    ForEach(model.navigation.visibleProviders, id: \.self) { Text($0.displayName).tag($0) }
                 }
-                .padding(3)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(AppTheme.surface)
-                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(AppTheme.hairline, lineWidth: 0.75))
-                )
+                .pickerStyle(.menu)
+                .fixedSize()
             } else {
                 Text(activeProvider.displayName)
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
@@ -157,7 +137,7 @@ struct ModelUsageTab: View {
 
     // MARK: - 子视图：核心 KPI 指标卡组
     private var kpiSummaryCardsView: some View {
-        HStack(spacing: 12) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 12)], spacing: 12) {
             // 卡片 1：活跃模型数
             kpiCard(
                 title: "活跃模型种类",
@@ -178,11 +158,11 @@ struct ModelUsageTab: View {
 
             // 卡片 3：加权估算总支出
             kpiCard(
-                title: "估算加权总花费",
+                title: "API 费率折算",
                 mainText: String(format: "%.2f", totalEstimatedCost),
                 unitText: preferences.targetCurrency.symbol,
                 isPrefixUnit: true,
-                subText: "折合 \(preferences.targetCurrency.rawValue)",
+                subText: "本机累计用量，非实际账单",
                 highlightColor: AppTheme.codex
             )
 
@@ -221,6 +201,8 @@ struct ModelUsageTab: View {
                 Text(mainText)
                     .font(.system(size: 22, weight: .heavy, design: .monospaced))
                     .foregroundStyle(highlightColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
 
                 if !isPrefixUnit, let unit = unitText {
                     Text(unit)
@@ -235,7 +217,7 @@ struct ModelUsageTab: View {
                 .lineLimit(1)
         }
         .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 90, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
                 .fill(AppTheme.surface)
@@ -258,7 +240,7 @@ struct ModelUsageTab: View {
                 return (text, "完全覆盖账号账单")
             }
         }
-        return ("本机独占", "账号接口未提供全量指标")
+        return ("暂无数据", "账号接口未提供全量指标")
     }
 
     // MARK: - 子视图：模型消耗排行矩阵大卡片
@@ -376,6 +358,7 @@ struct ModelUsageTab: View {
                         .font(.system(size: 12, weight: .semibold, design: .monospaced))
                         .foregroundStyle(AppTheme.primaryText)
                         .lineLimit(1)
+                        .help(item.model)
 
                     Text(detectProviderName(for: item.model))
                         .font(.system(size: 9, weight: .medium))
@@ -453,6 +436,7 @@ struct ModelUsageTab: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+        .lineLimit(1)
     }
 
     // MARK: - 子视图：对账机制与数据边界卡片

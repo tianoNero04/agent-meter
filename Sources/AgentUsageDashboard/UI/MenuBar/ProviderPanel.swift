@@ -248,9 +248,6 @@ struct TokenUsageCard: View {
                     Text("7 日动态趋势")
                         .font(.system(size: 8.5, weight: .medium, design: .monospaced))
                         .foregroundStyle(AppTheme.secondaryText)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 7, weight: .bold))
-                        .foregroundStyle(AppTheme.tertiaryText)
                 }
             }
 

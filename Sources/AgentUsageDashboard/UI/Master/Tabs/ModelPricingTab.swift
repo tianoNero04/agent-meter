@@ -130,51 +130,47 @@ struct ModelPricingTab: View {
                     Divider()
                         .background(Color.white.opacity(0.08))
 
-                    // 表头字段列 (Table Column Headers)
-                    HStack(spacing: 10) {
-                        Text("模型名称 / MODEL")
-                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                        Text("服务商")
-                            .frame(width: 78, alignment: .leading)
-
-                        Text("输入 (1M)")
-                            .frame(width: 76, alignment: .center)
-
-                        Text("缓存 (1M)")
-                            .frame(width: 76, alignment: .center)
-
-                        Text("输出 (1M)")
-                            .frame(width: 76, alignment: .center)
-
-                        Text("")
-                            .frame(width: 24, alignment: .center)
-                    }
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(AppTheme.secondaryText)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 9)
-                    .background(Color.white.opacity(0.015))
-
-                    Divider()
-                        .background(Color.white.opacity(0.08))
-
-                    // 表格数据行列表 (Table Data Rows)
-                    VStack(spacing: 0) {
-                        ForEach(visiblePricings) { pricingItem in
-                            tableRow(for: pricingItem)
-
-                            if pricingItem.id != visiblePricings.last?.id {
-                                Divider()
-                                    .background(Color.white.opacity(0.05))
+                    AdaptiveTable(minimumWidth: 720) {
+                        VStack(spacing: 0) {
+                            // 表头字段列
+                            HStack(spacing: 10) {
+                                Text("模型名称 / MODEL")
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Text("服务商")
+                                    .frame(width: 78, alignment: .leading)
+                                Text("输入 (1M)")
+                                    .frame(width: 76, alignment: .center)
+                                Text("缓存 (1M)")
+                                    .frame(width: 76, alignment: .center)
+                                Text("输出 (1M)")
+                                    .frame(width: 76, alignment: .center)
+                                Text("")
+                                    .frame(width: 24, alignment: .center)
                             }
-                        }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(AppTheme.secondaryText)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 9)
+                            .background(Color.white.opacity(0.015))
 
-                        if visiblePricings.isEmpty {
-                            Text("没有该服务商的模型")
-                                .font(.system(size: 12))
-                                .foregroundStyle(AppTheme.tertiaryText)
-                                .frame(maxWidth: .infinity, minHeight: 72)
+                            Divider()
+                                .background(Color.white.opacity(0.08))
+
+                            VStack(spacing: 0) {
+                                ForEach(visiblePricings) { pricingItem in
+                                    tableRow(for: pricingItem)
+                                    if pricingItem.id != visiblePricings.last?.id {
+                                        Divider()
+                                            .background(Color.white.opacity(0.05))
+                                    }
+                                }
+                                if visiblePricings.isEmpty {
+                                    Text("没有该服务商的模型")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(AppTheme.tertiaryText)
+                                        .frame(maxWidth: .infinity, minHeight: 72)
+                                }
+                            }
                         }
                     }
                 }
@@ -207,6 +203,8 @@ struct ModelPricingTab: View {
             Text(item.modelName)
                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
                 .foregroundStyle(AppTheme.primaryText)
+                .lineLimit(1)
+                .help(item.modelName)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             // 2. 服务商列

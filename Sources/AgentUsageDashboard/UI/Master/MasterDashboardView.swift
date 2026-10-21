@@ -46,10 +46,6 @@ struct MasterDashboardView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-                // 窗口右上角全局常驻：日夜模式切换按钮（位于外框上方，任意页面皆可见）
-                ThemeToggleButton()
-                    .padding(.top, 12)
-                    .padding(.trailing, 20)
             }
         }
         .frame(minWidth: 760, minHeight: 520)
