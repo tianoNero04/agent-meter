@@ -57,7 +57,7 @@ struct GeneralSettingsTab: View {
                 HStack(spacing: 8) {
                     Image(systemName: "menubar.rectangle")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(AppTheme.codex)
+                        .foregroundStyle(AppTheme.accent)
 
                     Text("系统状态栏极简纯净原则")
                         .font(.system(size: 12, weight: .semibold))
@@ -81,7 +81,7 @@ struct GeneralSettingsTab: View {
 
             Spacer()
         }
-        .padding(.top, 44)
+        .padding(.top, 24)
         .padding(.horizontal, 24)
         .padding(.bottom, 24)
         .onAppear {
@@ -111,7 +111,7 @@ struct GeneralSettingsTab: View {
         HStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(AppTheme.codex)
+                .foregroundStyle(AppTheme.accent)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
@@ -119,7 +119,7 @@ struct GeneralSettingsTab: View {
                     .foregroundStyle(AppTheme.primaryText)
 
                 Text(subtitle)
-                    .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .tracking(0.8)
                     .foregroundStyle(AppTheme.tertiaryText)
             }

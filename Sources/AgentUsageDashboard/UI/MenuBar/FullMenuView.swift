@@ -15,10 +15,10 @@ struct FullMenuView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "macwindow.on.rectangle")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(AppTheme.codex)
+                            .foregroundStyle(AppTheme.accent)
 
                         Text("[MENU // FULL.PANEL]")
-                            .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
                             .tracking(1.0)
                             .foregroundStyle(AppTheme.primaryText)
                     }

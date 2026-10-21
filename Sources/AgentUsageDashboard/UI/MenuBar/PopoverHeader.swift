@@ -20,7 +20,7 @@ struct PopoverHeader: View {
 
                 // 报头重字重大写品牌标
                 Text("AGENT METER")
-                    .font(.system(size: 10.5, weight: .heavy, design: .default))
+                    .font(.system(size: 10.5, weight: .semibold, design: .default))
                     .tracking(1.4)
                     .foregroundStyle(AppTheme.primaryText)
             }

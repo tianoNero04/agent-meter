@@ -32,17 +32,12 @@ struct ProvidersDiagnosticsTab: View {
                 HStack(spacing: 8) {
                     Image(systemName: "network")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(AppTheme.codex)
+                        .foregroundStyle(AppTheme.accent)
 
                     VStack(alignment: .leading, spacing: 1) {
                         Text("服务商与网络健康诊断")
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(AppTheme.primaryText)
-
-                        Text("PROVIDERS // RADAR.DIAGNOSTICS")
-                            .font(.system(size: 8.5, weight: .medium, design: .monospaced))
-                            .tracking(0.8)
-                            .foregroundStyle(AppTheme.tertiaryText)
                     }
 
                     Spacer()
@@ -112,7 +107,7 @@ struct ProvidersDiagnosticsTab: View {
                         Spacer()
 
                         Text("单次按需探测 · 零后台常驻")
-                            .font(.system(size: 9, weight: .regular, design: .monospaced))
+                            .font(.system(size: 11, weight: .regular, design: .monospaced))
                             .foregroundStyle(AppTheme.tertiaryText)
                     }
 
@@ -149,7 +144,7 @@ struct ProvidersDiagnosticsTab: View {
                                         .foregroundStyle(result.latencyMs < 200 ? AppTheme.success : AppTheme.warning)
 
                                     Text(result.detail)
-                                        .font(.system(size: 10, weight: .regular))
+                                        .font(.system(size: 11, weight: .regular))
                                         .foregroundStyle(AppTheme.tertiaryText)
                                 }
                                 .padding(.horizontal, 12)
@@ -177,7 +172,7 @@ struct ProvidersDiagnosticsTab: View {
 
                 Spacer(minLength: 20)
             }
-            .padding(.top, 44)
+            .padding(.top, 24)
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
         }
@@ -202,7 +197,7 @@ struct ProvidersDiagnosticsTab: View {
         return HStack(spacing: 12) {
             Image(systemName: iconName)
                 .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(AppTheme.codex)
+                .foregroundStyle(AppTheme.accent)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -213,7 +208,7 @@ struct ProvidersDiagnosticsTab: View {
 
                     if let ver = version {
                         Text(ver)
-                            .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
                             .foregroundStyle(AppTheme.success)
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1)
@@ -223,13 +218,13 @@ struct ProvidersDiagnosticsTab: View {
                             )
                     } else {
                         Text("已就绪")
-                            .font(.system(size: 9.5, weight: .medium))
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(AppTheme.success)
                     }
                 }
 
                 Text(location)
-                    .font(.system(size: 10.5, weight: .regular, design: .monospaced))
+                    .font(.system(size: 11, weight: .regular, design: .monospaced))
                     .foregroundStyle(AppTheme.secondaryText)
                     .lineLimit(1)
             }
@@ -304,15 +299,15 @@ struct ProvidersDiagnosticsTab: View {
                 HStack(spacing: 8) {
                     Image(systemName: "terminal")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(AppTheme.codex)
+                        .foregroundStyle(AppTheme.accent)
 
                     VStack(alignment: .leading, spacing: 1) {
                         Text("本地 Agent 运行环境检测")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(AppTheme.primaryText)
 
-                        Text("ENVIRONMENT // LOCAL.AGENT.TOOLCHAINS")
-                            .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                        Text("已安装的工具")
+                            .font(.system(size: 11, weight: .medium, design: .monospaced))
                             .tracking(0.8)
                             .foregroundStyle(AppTheme.tertiaryText)
                     }
@@ -330,7 +325,7 @@ struct ProvidersDiagnosticsTab: View {
                                 .controlSize(.mini)
                         } else {
                             Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 10, weight: .semibold))
+                                .font(.system(size: 11, weight: .semibold))
                         }
                         Text(model.isDetectingEnv ? "探测中..." : "一键环境检测")
                             .font(.system(size: 11, weight: .medium))
@@ -371,7 +366,7 @@ struct ProvidersDiagnosticsTab: View {
                         HStack(spacing: 12) {
                             Image(systemName: tool.iconName)
                                 .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(tool.isInstalled ? AppTheme.codex : AppTheme.tertiaryText)
+                                .foregroundStyle(tool.isInstalled ? AppTheme.accent : AppTheme.tertiaryText)
                                 .frame(width: 22)
 
                             VStack(alignment: .leading, spacing: 3) {
@@ -381,12 +376,12 @@ struct ProvidersDiagnosticsTab: View {
                                         .foregroundStyle(AppTheme.primaryText)
 
                                     Text(tool.vendor)
-                                        .font(.system(size: 9.5, weight: .regular))
+                                        .font(.system(size: 11, weight: .regular))
                                         .foregroundStyle(AppTheme.tertiaryText)
 
                                     if let ver = tool.version {
                                         Text(ver)
-                                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
                                             .foregroundStyle(AppTheme.success)
                                             .padding(.horizontal, 5)
                                             .padding(.vertical, 1)
@@ -399,12 +394,12 @@ struct ProvidersDiagnosticsTab: View {
 
                                 if let path = tool.locationPath {
                                     Text(path)
-                                        .font(.system(size: 10, weight: .regular, design: .monospaced))
+                                        .font(.system(size: 11, weight: .regular, design: .monospaced))
                                         .foregroundStyle(AppTheme.secondaryText)
                                         .lineLimit(1)
                                 } else {
                                     Text(tool.statusDescription)
-                                        .font(.system(size: 10, weight: .regular))
+                                        .font(.system(size: 11, weight: .regular))
                                         .foregroundStyle(AppTheme.tertiaryText)
                                 }
                             }

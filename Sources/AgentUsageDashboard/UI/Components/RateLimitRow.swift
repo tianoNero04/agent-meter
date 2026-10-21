@@ -1,80 +1,38 @@
 import SwiftUI
 
-/// 平面构成主义额度行组件：独立纯黑几何子卡片，内嵌荧光绿分段矩阵能量标尺与精确时间读数
+/// 紧凑额度行：窗口、剩余百分比与重置时间共用一条阅读路径。
 struct RateLimitRow: View {
     let window: RateLimitWindow
-    var accent: Color = AppTheme.neonGreen
+    var accent: Color = AppTheme.accent
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            // 工业规格几何圆形图标底衬
-            ZStack {
-                Circle()
-                    .fill(AppTheme.elevated)
-                    .frame(width: 28, height: 28)
-                    .overlay(
-                        Circle()
-                            .stroke(AppTheme.hairline, lineWidth: 0.75)
-                    )
-
-                QuotaRowIcon(windowMinutes: window.windowMinutes)
-                    .font(.system(size: 11, weight: .medium))
-            }
-
-            // 窗口属性与构成题注
-            VStack(alignment: .leading, spacing: 1.5) {
-                Text(window.label)
-                    .font(.system(size: 11.5, weight: .bold, design: .default))
-                    .foregroundStyle(AppTheme.primaryText)
-                Text(windowSubtitle)
-                    .font(.system(size: 7, weight: .semibold, design: .monospaced))
-                    .tracking(0.6)
-                    .foregroundStyle(AppTheme.secondaryText)
-            }
-            .frame(width: 52, alignment: .leading)
-
-            // 标志性视觉元素：20 段等宽精密小矩形荧光绿点阵刻度标尺
-            SwissSegmentedGauge(remainingPercent: window.remainingPercent, accent: accent)
-                .frame(maxWidth: .infinity)
-
-            // 核心数值：大幅等宽百分比读数
-            Text("\(window.remainingPercent, specifier: "%.0f")%")
-                .font(.system(size: 17, weight: .heavy, design: .monospaced))
-                .foregroundStyle(AppTheme.primaryText)
-                .frame(width: 44, alignment: .trailing)
-
-            // 竖向发丝分割线与右侧重置倒计时
-            if let resetsAt = window.resetsAt {
-                Rectangle()
-                    .fill(AppTheme.hairline)
-                    .frame(width: 0.75, height: 26)
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("RESETS")
-                        .font(.system(size: 6.5, weight: .bold, design: .monospaced))
-                        .tracking(0.5)
-                        .foregroundStyle(AppTheme.secondaryText)
-                    Text(resetDateText(from: resetsAt))
-                        .font(.system(size: 8, weight: .medium, design: .monospaced))
-                        .foregroundStyle(AppTheme.primaryText)
-                        .lineLimit(1)
-                    Text(countdownText(to: resetsAt))
-                        .font(.system(size: 7.5, weight: .regular, design: .default))
-                        .foregroundStyle(AppTheme.secondaryText)
+        HStack(spacing: 10) {
+            QuotaRowIcon(windowMinutes: window.windowMinutes)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(window.label).font(.system(size: 12, weight: .medium))
+                    Spacer(minLength: 4)
+                    Text("\(window.remainingPercent, specifier: "%.0f")%")
+                        .font(.system(size: 17, weight: .semibold))
+                        .monospacedDigit()
                 }
-                .frame(width: 58, alignment: .leading)
+                .foregroundStyle(AppTheme.primaryText)
+                SwissSegmentedGauge(remainingPercent: window.remainingPercent, accent: accent)
+            }
+            if let resetsAt = window.resetsAt {
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(window.windowMinutes == 300 ? "距离重置" : "重置时间")
+                        .foregroundStyle(AppTheme.secondaryText)
+                    Text(window.windowMinutes == 300 ? countdownText(to: resetsAt) : resetDateText(from: resetsAt))
+                        .foregroundStyle(AppTheme.primaryText)
+                        .monospacedDigit()
+                }
+                .font(.system(size: 11))
+                .lineLimit(1)
+                .frame(width: 92, alignment: .trailing)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-                .fill(AppTheme.background.opacity(0.88))
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-                        .stroke(AppTheme.hairline, lineWidth: 0.75)
-                )
-        )
+        .padding(.vertical, 6)
     }
 
     private func resetDateText(from date: Date) -> String {
@@ -86,25 +44,15 @@ struct RateLimitRow: View {
         let seconds = max(0, Int(date.timeIntervalSinceNow))
         if seconds == 0 { return "即刻重置" }
         let days = seconds / 86400, hours = (seconds % 86400) / 3600, minutes = (seconds % 3600) / 60
-        if days > 0 { return "余 \(days)天\(hours)时" }
-        if hours > 0 { return "余 \(hours)时\(minutes)分" }
-        return "余 \(max(1, minutes))分"
-    }
-
-    private var windowSubtitle: String {
-        switch window.windowMinutes {
-        case 300: return "LIMIT 05H"
-        case 10080: return "LIMIT 07D"
-        case let minutes?: return "LIMIT \(minutes)M"
-        default: return "ACCOUNT"
-        }
+        if days > 0 { return "\(days)天\(hours)小时" }
+        if hours > 0 { return "\(hours)小时\(minutes)分" }
+        return "\(max(1, minutes))分钟"
     }
 }
 
-/// 构成主义高精度分段刻度标尺：将额度容量划分为 20 格荧光绿微型精密矩形量块
 struct SwissSegmentedGauge: View {
     let remainingPercent: Double
-    var accent: Color = AppTheme.neonGreen
+    var accent: Color = AppTheme.accent
 
     private let totalSegments: Int = 20
 
@@ -112,21 +60,20 @@ struct SwissSegmentedGauge: View {
         GeometryReader { proxy in
             let availableWidth = proxy.size.width
             let spacing: CGFloat = 1.5
-            let segmentWidth = max(2, (availableWidth - CGFloat(totalSegments - 1) * spacing) / CGFloat(totalSegments))
+            let segmentWidth = max(0, (availableWidth - CGFloat(totalSegments - 1) * spacing) / CGFloat(totalSegments))
             let filledCount = Int(round((remainingPercent / 100.0) * Double(totalSegments)))
 
             HStack(spacing: spacing) {
                 ForEach(0..<totalSegments, id: \.self) { index in
                     let isFilled = index < filledCount
-                    let isHead = index == filledCount - 1 && filledCount > 0
                     RoundedRectangle(cornerRadius: 0.5, style: .continuous)
                         .fill(
                             isFilled
-                                ? (isHead ? Color.white : accent)
+                                ? accent
                                 : Color.white.opacity(0.08)
                         )
                         .frame(width: segmentWidth, height: 9.0)
-                        .shadow(color: isFilled ? accent.opacity(0.4) : Color.clear, radius: 1.5)
+
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

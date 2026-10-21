@@ -54,8 +54,8 @@ enum MasterSection: String, CaseIterable, Identifiable, Hashable, Sendable {
 
 /// 侧边栏分组类别
 enum SidebarGroup: String, CaseIterable {
-    case insights = "MONITORING"
-    case preferences = "PREFERENCES"
+    case insights = "用量"
+    case preferences = "设置"
 
     var title: String { rawValue }
 }
@@ -99,9 +99,8 @@ struct AppSidebarView: View {
                         VStack(alignment: .leading, spacing: 3) {
                             // 分组微标题（10pt 等宽加粗，全大写，带字距）
                             Text(group.title)
-                                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                .tracking(1.1)
-                                .foregroundStyle(AppTheme.tertiaryText)
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                                                .foregroundStyle(AppTheme.tertiaryText)
                                 .padding(.horizontal, 12)
                                 .padding(.bottom, 4)
 
@@ -158,14 +157,8 @@ struct AppSidebarView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("AGENT METER")
-                    .font(.system(size: 12, weight: .heavy, design: .default))
-                    .tracking(0.8)
-                    .foregroundStyle(AppTheme.primaryText)
-
-                Text("VOL.26 // LOCAL.DAEMON")
-                    .font(.system(size: 7.5, weight: .medium, design: .monospaced))
-                    .tracking(0.5)
-                    .foregroundStyle(AppTheme.tertiaryText)
+                    .font(.system(size: 12, weight: .semibold, design: .default))
+                                        .foregroundStyle(AppTheme.primaryText)
             }
 
             Spacer(minLength: 0)
@@ -178,15 +171,14 @@ struct AppSidebarView: View {
             Circle()
                 .fill(AppTheme.success)
                 .frame(width: 6, height: 6)
-                .shadow(color: AppTheme.success.opacity(0.5), radius: 3)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text("Codex & Kimi Active")
-                    .font(.system(size: 10.5, weight: .medium))
+                Text("Agent Meter")
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(AppTheme.primaryText)
 
-                Text("macOS Native · v0.1.0")
-                    .font(.system(size: 8, weight: .regular, design: .monospaced))
+                Text("本机用量监测")
+                    .font(.system(size: 11, weight: .regular, design: .monospaced))
                     .foregroundStyle(AppTheme.tertiaryText)
             }
 
@@ -229,18 +221,18 @@ struct SidebarNavItem: View {
                 Image(systemName: section.iconName)
                     .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
                     .frame(width: 18)
-                    .foregroundStyle(isSelected ? AppTheme.primaryText : (isHovered ? AppTheme.primaryText : AppTheme.secondaryText))
+                    .foregroundStyle(isSelected ? AppTheme.accent : (isHovered ? AppTheme.primaryText : AppTheme.secondaryText))
 
                 Text(section.title)
                     .font(.system(size: 12.5, weight: isSelected ? .medium : .regular))
-                    .foregroundStyle(isSelected ? AppTheme.primaryText : (isHovered ? AppTheme.primaryText : AppTheme.secondaryText))
+                    .foregroundStyle(isSelected ? AppTheme.accent : (isHovered ? AppTheme.primaryText : AppTheme.secondaryText))
 
                 Spacer(minLength: 4)
 
                 // 右侧数据徽标（如延迟、数量）
                 if let badge, !badge.isEmpty {
                     Text(badge)
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
                         .foregroundStyle(isSelected ? AppTheme.primaryText : AppTheme.tertiaryText)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
@@ -253,8 +245,8 @@ struct SidebarNavItem: View {
             .padding(.horizontal, 9)
             .frame(height: 34)
             .background(
-                RoundedRectangle(cornerRadius: 7)
-                    .fill(isSelected ? Color.white.opacity(0.08) : (isHovered ? Color.white.opacity(0.04) : Color.clear))
+                RoundedRectangle(cornerRadius: AppTheme.geometricRadius)
+                    .fill(isSelected ? AppTheme.selection : (isHovered ? AppTheme.elevated : Color.clear))
             )
             .contentShape(Rectangle())
         }

@@ -50,6 +50,8 @@ struct PopoverView: View {
         }
         .frame(width: 390, height: 425)
         .preferredColorScheme(.dark)
+        .tint(AppTheme.accent)
+        .accentColor(AppTheme.accent)
         // 捕获菜单栏弹窗的宿主 NSWindow，以便打开主页面时可精确瞬时收起
         .background(
             WindowAccessor { window in
@@ -140,7 +142,7 @@ struct PopoverTopBar: View {
     }
 }
 
-/// 右上角面板图标按钮：呈现严谨构成主义微圆角与荧光绿悬停反馈，点击激活并启动完整控制中心
+/// 右上角面板图标按钮：呈现严谨构成主义微圆角与绿色悬停反馈，点击激活并启动完整控制中心
 struct PanelMenuButton: View {
     let openMenu: () -> Void
     @State private var isHovered = false
@@ -152,12 +154,12 @@ struct PanelMenuButton: View {
                     .fill(isHovered ? AppTheme.surface : Color.clear)
                     .overlay(
                         RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-                            .stroke(isHovered ? AppTheme.neonGreenBorder : AppTheme.hairline.opacity(0.5), lineWidth: 0.75)
+                            .stroke(isHovered ? AppTheme.accentBorder : AppTheme.hairline.opacity(0.5), lineWidth: 0.75)
                     )
 
                 Image(systemName: "macwindow.on.rectangle")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(isHovered ? AppTheme.neonGreen : AppTheme.secondaryText)
+                    .foregroundStyle(isHovered ? AppTheme.accent : AppTheme.secondaryText)
             }
             .frame(width: 24, height: 24)
             .contentShape(Rectangle())
@@ -182,15 +184,15 @@ struct PopoverFooter: View {
 
             HStack {
                 HStack(spacing: 4) {
-                    Text("AGENT METER // CONSTRUCTIVISM")
-                        .font(.system(size: 7, weight: .bold, design: .monospaced))
+                    Text(selectedProvider.displayName)
+                        .font(.system(size: 11, weight: .medium))
                         .tracking(0.6)
                         .foregroundStyle(AppTheme.tertiaryText)
                 }
 
                 Spacer()
 
-                // 与顶部 Provider 完全数量对齐并按位置联动的微型荧光绿脉冲阵列
+                // 与顶部 Provider 完全数量对齐并按位置联动的微型绿色脉冲阵列
                 HStack(spacing: 3) {
                     ForEach(providers, id: \.self) { provider in
                         let isSelected = provider == selectedProvider
@@ -198,12 +200,9 @@ struct PopoverFooter: View {
                             onSelect?(provider)
                         } label: {
                             RoundedRectangle(cornerRadius: 0.5)
-                                .fill(isSelected ? AppTheme.neonGreen : Color.white.opacity(0.14))
+                                .fill(isSelected ? AppTheme.accent : Color.white.opacity(0.14))
                                 .frame(width: isSelected ? 8 : 4, height: 2)
-                                .shadow(
-                                    color: isSelected ? AppTheme.neonGreen.opacity(0.6) : .clear,
-                                    radius: isSelected ? 1 : 0
-                                )
+
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -212,7 +211,7 @@ struct PopoverFooter: View {
                 .animation(.easeInOut(duration: 0.20), value: selectedProvider)
             }
             .padding(.horizontal, 14)
-            .frame(height: 18)
+            .frame(height: 22)
         }
     }
 }

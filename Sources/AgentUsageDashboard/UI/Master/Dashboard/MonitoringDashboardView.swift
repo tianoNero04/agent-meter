@@ -35,11 +35,12 @@ struct MonitoringDashboardView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(AppTheme.secondaryText)
 
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 12)], spacing: 12) {
+                HStack(alignment: .top, spacing: 0) {
                     metric("范围内 Token", value: formatCompactNumber(summary.totalTokens), detail: summary.tokensDeltaRatio.map { String(format: "最近一时段环比 %+.1f%%", $0 * 100) } ?? "暂无可比较的上一时段")
                     metric("缓存命中率（估算）", value: String(format: "%.1f%%", summary.cacheHitRate * 100), detail: "缓存折算节省 \(summary.cacheSavingsDisplay)")
                     metric("API 费率折算", value: String(format: "%@%.2f", pricing.targetCurrency.symbol, summary.totalEstimatedCost), detail: "估算金额，非实际账单")
                 }
+                .panelBackground()
 
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
@@ -57,10 +58,10 @@ struct MonitoringDashboardView: View {
                                 VStack(spacing: 7) {
                                     Spacer(minLength: 0)
                                     RoundedRectangle(cornerRadius: 3)
-                                        .fill(selectedBucketID == bucket.id ? AppTheme.codex : AppTheme.secondaryText.opacity(0.55))
+                                        .fill(selectedBucketID == bucket.id ? AppTheme.accent : AppTheme.secondaryText.opacity(0.55))
                                         .frame(height: max(3, 96 * CGFloat(bucket.totalTokens) / CGFloat(max(1, buckets.map(\.totalTokens).max() ?? 1))))
                                     Text(bucket.label)
-                                        .font(.system(size: 10, design: .monospaced))
+                                        .font(.system(size: 11, design: .monospaced))
                                         .foregroundStyle(AppTheme.secondaryText)
                                 }
                                 .frame(maxWidth: .infinity)
@@ -77,15 +78,15 @@ struct MonitoringDashboardView: View {
                 .padding(16)
                 .panelBackground()
 
-                AdaptiveTable(minimumWidth: 780) {
+                AdaptiveTable(minimumWidth: 600) {
                     VStack(spacing: 0) {
                         HStack(spacing: 10) {
                             Text("服务商").frame(maxWidth: .infinity, alignment: .leading)
                             Text("占比").frame(width: 52, alignment: .trailing)
-                            Text("输入估算").frame(width: 80, alignment: .trailing)
-                            Text("缓存估算").frame(width: 80, alignment: .trailing)
-                            Text("输出/推理估算").frame(width: 100, alignment: .trailing)
-                            Text("折算金额").frame(width: 110, alignment: .trailing)
+                            Text("输入估算").frame(width: 64, alignment: .trailing)
+                            Text("缓存估算").frame(width: 64, alignment: .trailing)
+                            Text("输出/推理估算").frame(width: 84, alignment: .trailing)
+                            Text("折算金额").frame(width: 90, alignment: .trailing)
                         }
                         .font(.system(size: 11))
                         .foregroundStyle(AppTheme.secondaryText)
@@ -95,10 +96,10 @@ struct MonitoringDashboardView: View {
                             HStack(spacing: 10) {
                                 Text(row.provider.displayName).frame(maxWidth: .infinity, alignment: .leading)
                                 Text(String(format: "%.1f%%", row.shareRatio * 100)).frame(width: 52, alignment: .trailing)
-                                Text(formatCompactNumber(row.inputTokens)).frame(width: 80, alignment: .trailing)
-                                Text(formatCompactNumber(row.cachedTokens)).frame(width: 80, alignment: .trailing)
-                                Text(formatCompactNumber(row.outputTokens)).frame(width: 100, alignment: .trailing)
-                                Text(String(format: "%@%.2f", pricing.targetCurrency.symbol, row.estimatedCost)).frame(width: 110, alignment: .trailing)
+                                Text(formatCompactNumber(row.inputTokens)).frame(width: 64, alignment: .trailing)
+                                Text(formatCompactNumber(row.cachedTokens)).frame(width: 64, alignment: .trailing)
+                                Text(formatCompactNumber(row.outputTokens)).frame(width: 84, alignment: .trailing)
+                                Text(String(format: "%@%.2f", pricing.targetCurrency.symbol, row.estimatedCost)).frame(width: 90, alignment: .trailing)
                             }
                             .font(.system(size: 12))
                             .monospacedDigit()
@@ -131,9 +132,8 @@ struct MonitoringDashboardView: View {
                 .minimumScaleFactor(0.6)
             Text(detail).font(.system(size: 11)).foregroundStyle(AppTheme.secondaryText)
         }
-        .frame(maxWidth: .infinity, minHeight: 90, alignment: .leading)
-        .padding(14)
-        .panelBackground()
+        .frame(maxWidth: .infinity, minHeight: 86, alignment: .leading)
+        .padding(12)
     }
 
     private func scopeDescription(buckets: [TokenDistributionBucket], selected: TokenDistributionBucket?) -> String {

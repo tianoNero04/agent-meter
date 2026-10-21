@@ -10,11 +10,10 @@ struct StatusBadge: View {
             Circle()
                 .fill(statusColor)
                 .frame(width: 5, height: 5)
-                .shadow(color: status == .connected ? AppTheme.neonGreen.opacity(0.8) : Color.clear, radius: 2)
 
             // 全大写等宽状态码
             Text(status.displayText.uppercased())
-                .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .tracking(0.6)
                 .foregroundStyle(status == .connected ? AppTheme.primaryText : AppTheme.secondaryText)
         }
@@ -23,7 +22,7 @@ struct StatusBadge: View {
         .background(AppTheme.elevated, in: RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-                .stroke(status == .connected ? AppTheme.neonGreenBorder.opacity(0.4) : AppTheme.hairline, lineWidth: 0.5)
+                .stroke(status == .connected ? AppTheme.accentBorder.opacity(0.4) : AppTheme.hairline, lineWidth: 0.5)
         )
     }
 

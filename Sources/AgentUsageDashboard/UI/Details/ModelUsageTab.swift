@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 现代深色模型消耗排行与账单对账看板
+/// 现代深色模型用量看板
 struct ModelUsageTab: View {
     @ObservedObject var model: DashboardModel
     @State private var selectedProviderState: Provider? = nil
@@ -70,6 +70,7 @@ struct ModelUsageTab: View {
 
                 // 2. 核心 KPI 指标卡组（4 栏网格）
                 kpiSummaryCardsView
+                    .panelBackground()
 
                 // 3. 模型消耗排行矩阵大卡片
                 AdaptiveTable(minimumWidth: 960) { rankingLeaderboardCardView }
@@ -79,7 +80,7 @@ struct ModelUsageTab: View {
 
                 Spacer(minLength: 24)
             }
-            .padding(.top, 44)
+            .padding(.top, 24)
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
         }
@@ -95,19 +96,11 @@ struct ModelUsageTab: View {
     private var headerView: some View {
         HStack(alignment: .center, spacing: 12) {
             HStack(spacing: 8) {
-                Image(systemName: "chart.bar.xaxis")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(AppTheme.codex)
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("模型消耗排行与账单对账")
-                        .font(.system(size: 14, weight: .bold))
+                    Text("模型用量")
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(AppTheme.primaryText)
-
-                    Text("RANKING & RECONCILIATION // LOCAL LOGS VS ACCOUNT")
-                        .font(.system(size: 8.5, weight: .medium, design: .monospaced))
-                        .tracking(0.8)
-                        .foregroundStyle(AppTheme.tertiaryText)
                 }
             }
 
@@ -119,6 +112,7 @@ struct ModelUsageTab: View {
                     ForEach(model.navigation.visibleProviders, id: \.self) { Text($0.displayName).tag($0) }
                 }
                 .pickerStyle(.menu)
+                .menuStyle(.borderlessButton)
                 .fixedSize()
             } else {
                 Text(activeProvider.displayName)
@@ -163,7 +157,7 @@ struct ModelUsageTab: View {
                 unitText: preferences.targetCurrency.symbol,
                 isPrefixUnit: true,
                 subText: "本机累计用量，非实际账单",
-                highlightColor: AppTheme.codex
+                highlightColor: AppTheme.primaryText
             )
 
             // 卡片 4：云端账单对账覆盖度
@@ -173,7 +167,7 @@ struct ModelUsageTab: View {
                 mainText: covText,
                 unitText: nil,
                 subText: covSub,
-                highlightColor: AppTheme.success
+                highlightColor: AppTheme.primaryText
             )
         }
     }
@@ -194,12 +188,12 @@ struct ModelUsageTab: View {
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 if isPrefixUnit, let unit = unitText {
                     Text(unit)
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(highlightColor)
                 }
 
                 Text(mainText)
-                    .font(.system(size: 22, weight: .heavy, design: .monospaced))
+                    .font(.system(size: 22, weight: .semibold, design: .monospaced))
                     .foregroundStyle(highlightColor)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
@@ -212,20 +206,12 @@ struct ModelUsageTab: View {
             }
 
             Text(subText)
-                .font(.system(size: 9.5, weight: .regular))
+                .font(.system(size: 11, weight: .regular))
                 .foregroundStyle(AppTheme.tertiaryText)
                 .lineLimit(1)
         }
         .padding(14)
         .frame(maxWidth: .infinity, minHeight: 90, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
-                .fill(AppTheme.surface)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
-                        .stroke(AppTheme.hairline, lineWidth: 0.75)
-                )
-        )
     }
 
     private func calculateCoverageInfo() -> (String, String) {
@@ -254,7 +240,7 @@ struct ModelUsageTab: View {
                         .foregroundStyle(AppTheme.primaryText)
 
                     Text("按实际调用 Token 降序排列 · 包含构成分布、单价核算与用量份额")
-                        .font(.system(size: 10.5, weight: .regular))
+                        .font(.system(size: 11, weight: .regular))
                         .foregroundStyle(AppTheme.tertiaryText)
                 }
 
@@ -298,7 +284,7 @@ struct ModelUsageTab: View {
                     Text("估算费用")
                         .frame(width: 80, alignment: .trailing)
                 }
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(AppTheme.tertiaryText)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
@@ -345,12 +331,12 @@ struct ModelUsageTab: View {
             HStack(spacing: 8) {
                 // 排名 Badge
                 Text("#\(index)")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundStyle(index <= 3 ? AppTheme.codex : AppTheme.tertiaryText)
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(index <= 3 ? AppTheme.accent : AppTheme.tertiaryText)
                     .frame(width: 24, height: 20)
                     .background(
                         RoundedRectangle(cornerRadius: 4)
-                            .fill(index <= 3 ? AppTheme.codex.opacity(0.15) : Color.white.opacity(0.04))
+                            .fill(index <= 3 ? AppTheme.accent.opacity(0.15) : Color.white.opacity(0.04))
                     )
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -361,7 +347,7 @@ struct ModelUsageTab: View {
                         .help(item.model)
 
                     Text(detectProviderName(for: item.model))
-                        .font(.system(size: 9, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(AppTheme.secondaryText)
                 }
             }
@@ -377,27 +363,27 @@ struct ModelUsageTab: View {
                 // 细分数据描述
                 HStack(spacing: 8) {
                     HStack(spacing: 3) {
-                        Circle().fill(Color(red: 0.20, green: 0.45, blue: 0.90)).frame(width: 4.5, height: 4.5)
+                        Circle().fill(AppTheme.chartInput).frame(width: 4.5, height: 4.5)
                         Text("输入 \(formatTokens(item.usage.input))")
                     }
 
                     HStack(spacing: 3) {
-                        Circle().fill(AppTheme.codex).frame(width: 4.5, height: 4.5)
+                        Circle().fill(AppTheme.accent).frame(width: 4.5, height: 4.5)
                         Text("缓存 \(formatTokens(item.usage.cachedInput)) (\(formatPercent(item.usage.cacheHitRate)))")
                     }
 
                     HStack(spacing: 3) {
-                        Circle().fill(Color(red: 0.55, green: 0.35, blue: 0.85)).frame(width: 4.5, height: 4.5)
+                        Circle().fill(AppTheme.chartOutput).frame(width: 4.5, height: 4.5)
                         Text("输出 \(formatTokens(item.usage.output))")
                     }
 
                     Spacer()
 
                     Text("总计 \(formatTokens(item.usage.total))")
-                        .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
                         .foregroundStyle(AppTheme.primaryText)
                 }
-                .font(.system(size: 9.5, weight: .regular))
+                .font(.system(size: 11, weight: .regular))
                 .foregroundStyle(AppTheme.tertiaryText)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -414,7 +400,7 @@ struct ModelUsageTab: View {
                         Capsule()
                             .fill(Color.white.opacity(0.06))
                         Capsule()
-                            .fill(AppTheme.codex)
+                            .fill(AppTheme.accent)
                             .frame(width: geo.size.width * CGFloat(sharePercent))
                     }
                 }
@@ -429,7 +415,7 @@ struct ModelUsageTab: View {
                     .foregroundStyle(cost > 0 ? AppTheme.primaryText : AppTheme.tertiaryText)
 
                 Text(preferences.targetCurrency.rawValue)
-                    .font(.system(size: 8.5, weight: .regular))
+                    .font(.system(size: 11, weight: .regular))
                     .foregroundStyle(AppTheme.tertiaryText)
             }
             .frame(width: 80, alignment: .trailing)
@@ -444,7 +430,7 @@ struct ModelUsageTab: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "info.circle.fill")
                 .font(.system(size: 14))
-                .foregroundStyle(AppTheme.codex)
+                .foregroundStyle(AppTheme.accent)
                 .padding(.top, 1)
 
             VStack(alignment: .leading, spacing: 5) {
@@ -455,19 +441,19 @@ struct ModelUsageTab: View {
                 HStack(alignment: .top, spacing: 18) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("• 本机日志观测口径")
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(AppTheme.secondaryText)
                         Text("通过流式解析当前 Mac 本地会话日志精确到每一条交互，是模型消耗细分、缓存命中率以及加权费率计算的真实依据。")
-                            .font(.system(size: 9.5, weight: .regular))
+                            .font(.system(size: 11, weight: .regular))
                             .foregroundStyle(AppTheme.tertiaryText)
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("• 云端账号汇总口径")
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(AppTheme.secondaryText)
                         Text("官方服务端接口返回的全账号用量。若本机 Token 占账号总量比例偏低，通常因同账号在多设备共用或本地历史日志已轮转。")
-                            .font(.system(size: 9.5, weight: .regular))
+                            .font(.system(size: 11, weight: .regular))
                             .foregroundStyle(AppTheme.tertiaryText)
                     }
                 }
@@ -535,17 +521,17 @@ struct TokenStackedBar: View {
             HStack(spacing: 0) {
                 // 1. 输入部分（深蓝）
                 Rectangle()
-                    .fill(Color(red: 0.20, green: 0.45, blue: 0.90))
+                    .fill(AppTheme.chartInput)
                     .frame(width: inputW)
 
                 // 2. 缓存命中部分（亮青蓝）
                 Rectangle()
-                    .fill(AppTheme.codex)
+                    .fill(AppTheme.accent)
                     .frame(width: cacheW)
 
                 // 3. 输出部分（蓝紫）
                 Rectangle()
-                    .fill(Color(red: 0.55, green: 0.35, blue: 0.85))
+                    .fill(AppTheme.chartOutput)
                     .frame(width: outputW)
             }
         }

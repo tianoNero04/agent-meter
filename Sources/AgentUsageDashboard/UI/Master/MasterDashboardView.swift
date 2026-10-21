@@ -50,6 +50,8 @@ struct MasterDashboardView: View {
         }
         .frame(minWidth: 760, minHeight: 520)
         .preferredColorScheme(.dark)
+        .tint(AppTheme.accent)
+        .accentColor(AppTheme.accent)
         .navigationTitle("")
         .background(WindowTitlebarConfigurator())
         .onAppear {

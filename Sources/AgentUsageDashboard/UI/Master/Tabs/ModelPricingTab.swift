@@ -45,7 +45,7 @@ struct ModelPricingTab: View {
 
                         if let updateMessage {
                             Text(updateMessage)
-                                .font(.system(size: 10, weight: .regular))
+                                .font(.system(size: 11, weight: .regular))
                                 .foregroundStyle(AppTheme.secondaryText)
                                 .lineLimit(1)
                                 .help(updateErrorDetail ?? updateMessage)
@@ -62,14 +62,14 @@ struct ModelPricingTab: View {
                         } label: {
                             HStack(spacing: 7) {
                                 Image(systemName: "line.3.horizontal.decrease")
-                                    .font(.system(size: 10, weight: .medium))
+                                    .font(.system(size: 11, weight: .medium))
 
                                 Text(selectedProvider)
                                     .font(.system(size: 11, weight: .medium))
                                     .lineLimit(1)
 
                                 Image(systemName: "chevron.down")
-                                    .font(.system(size: 8, weight: .semibold))
+                                    .font(.system(size: 11, weight: .semibold))
                             }
                             .foregroundStyle(isProviderFilterHovered ? AppTheme.primaryText : AppTheme.secondaryText)
                             .padding(.horizontal, 9)
@@ -174,7 +174,7 @@ struct ModelPricingTab: View {
                         }
                     }
                 }
-                .background(Color(red: 14/255, green: 16/255, blue: 21/255))
+                .background(AppTheme.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -183,7 +183,7 @@ struct ModelPricingTab: View {
 
                 Spacer(minLength: 20)
             }
-            .padding(.top, 36)
+            .padding(.top, 24)
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
         }
@@ -226,7 +226,6 @@ struct ModelPricingTab: View {
             InlineEditablePillCell(
                 value: item.cacheReadPerMillion,
                 symbol: item.baseCurrency.symbol,
-                isCache: true,
                 width: 76
             ) { newPrice in
                 updatePrice(for: item, cache: newPrice)
@@ -248,7 +247,7 @@ struct ModelPricingTab: View {
                         restoreOfficialPricing(for: item)
                     } label: {
                         Image(systemName: "arrow.uturn.backward")
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(AppTheme.tertiaryText)
                             .frame(width: 22, height: 22)
                             .background(Color.white.opacity(0.05))
@@ -301,7 +300,7 @@ struct ModelPricingTab: View {
                 Spacer()
                 if selectedProvider == provider {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 11, weight: .semibold))
                 }
             }
         }
@@ -390,7 +389,6 @@ struct ModelPricingTab: View {
 struct InlineEditablePillCell: View {
     let value: Double
     let symbol: String
-    var isCache: Bool = false
     var width: CGFloat = 76
 
     var onCommit: (Double) -> Void
@@ -419,23 +417,23 @@ struct InlineEditablePillCell: View {
             } else {
                 HStack(spacing: 2) {
                     Text(symbol)
-                        .font(.system(size: 10, weight: .regular))
-                        .foregroundStyle(isCache ? AppTheme.codex.opacity(0.85) : AppTheme.tertiaryText)
+                        .font(.system(size: 11, weight: .regular))
+                        .foregroundStyle(AppTheme.secondaryText)
 
                     Text(formattedValue(value))
                         .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(isCache ? AppTheme.codex : AppTheme.primaryText)
+                        .foregroundStyle(AppTheme.primaryText)
                 }
             }
         }
         .frame(width: width, height: 26)
         .background(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(isEditing ? Color(white: 0.20) : Color(white: 0.12))
+                .fill(isEditing ? AppTheme.elevated : AppTheme.surface)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .stroke(isEditing ? AppTheme.codex : Color.white.opacity(0.06), lineWidth: 1)
+                .stroke(isEditing ? AppTheme.accent : Color.white.opacity(0.06), lineWidth: 1)
         )
         .contentShape(Rectangle())
         .onTapGesture {

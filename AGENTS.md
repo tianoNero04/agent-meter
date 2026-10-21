@@ -38,7 +38,7 @@ Data ──────> Core
 3. 在 `App/AppDependencies.swift` 注册 adapter 和监听目录。
 4. 不在 `DashboardModel` 或 UI 中增加 Provider 专属分支；adapter 随应用版本发布，不做运行时动态加载。
 
-UI 样式约定：所有 provider 共用同一套视觉样式，不随 provider 换色。文字为白色（主信息）或 `secondaryText` 暗色（辅助信息）；图标、进度条、曲线等装饰统一用固定蓝 `AppTheme.codex`。新增 provider 只需提供数据与 `Resources/ProviderIcon<Name>.png` 图标，UI 无需改动。
+UI 样式约定：遵循根目录 `DESIGN.md` 的瑞士国际主义、极简扁平规范。所有 Provider 共用 `AppTheme.accent` 绿色（#3DD68C）与中性炭黑（#111111），不随 Provider 换色。主色用于操作、选中状态和关键图表，普通金额保持灰白。禁止装饰性渐变、光晕、阴影及无意义英文题注；辅助文字以 11 pt 为基准。新增 Provider 只需提供数据与图标。
 
 数据边界：账号额度和账号 Token 是服务端账号口径（跨设备）；模型排行和本机 Token 是当前 Mac 的日志观测值。账号查询失败时保留上一份可用账号数据并显示错误，不制造虚假的账号级百分比。
 
