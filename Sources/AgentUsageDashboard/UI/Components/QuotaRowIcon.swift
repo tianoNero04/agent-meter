@@ -6,20 +6,6 @@ enum QuotaRowIconKind: Equatable {
     case generic
 }
 
-struct QuotaRowIconRGB: Equatable {
-    let red: UInt8
-    let green: UInt8
-    let blue: UInt8
-
-    var color: Color {
-        Color(
-            red: Double(red) / 255,
-            green: Double(green) / 255,
-            blue: Double(blue) / 255
-        )
-    }
-}
-
 /// 额度行图标视觉规范：按弹窗标准尺寸（366pt 宽度基准）等比缩放。
 struct QuotaRowIconSpec: Equatable {
     let kind: QuotaRowIconKind
@@ -29,8 +15,6 @@ struct QuotaRowIconSpec: Equatable {
     var backgroundScale: CGFloat { Self.backgroundScale }
     var ringSize: CGFloat { 70 * Self.backgroundScale }
     var ringBorderWidth: CGFloat { Self.backgroundScale }
-    let ringBorderOpacity: Double = 0.28
-    var ringShadowRadius: CGFloat { 16 * Self.backgroundScale }
     var clockSize: CGFloat { 32 * Self.backgroundScale }
     var clockStrokeWidth: CGFloat { 3 * Self.backgroundScale }
     var calendarSize: CGFloat { 58 * Self.backgroundScale }
@@ -38,10 +22,6 @@ struct QuotaRowIconSpec: Equatable {
     var genericPointSize: CGFloat { 24 * Self.backgroundScale }
     var glyphVerticalOffset: CGFloat { 2 * Self.backgroundScale }
     let calendarOpacity: Double = 0.88
-    let ringGradientStart = QuotaRowIconRGB(red: 42, green: 52, blue: 64)
-    let ringGradientEnd = QuotaRowIconRGB(red: 15, green: 23, blue: 31)
-    let ringBorderColor = QuotaRowIconRGB(red: 139, green: 153, blue: 170)
-    let ringShadowColor = QuotaRowIconRGB(red: 89, green: 112, blue: 138)
 
     init(windowMinutes: Int?) {
         switch windowMinutes {
@@ -62,27 +42,14 @@ struct QuotaRowIcon: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            spec.ringGradientStart.color,
-                            spec.ringGradientEnd.color
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(AppTheme.elevated)
                 .overlay {
                     Circle()
                         .stroke(
-                            spec.ringBorderColor.color.opacity(spec.ringBorderOpacity),
+                            AppTheme.hairlineBright,
                             lineWidth: spec.ringBorderWidth
                         )
                 }
-                .shadow(
-                    color: spec.ringShadowColor.color.opacity(0.18),
-                    radius: spec.ringShadowRadius
-                )
 
             switch spec.kind {
             case .clock:
@@ -91,14 +58,14 @@ struct QuotaRowIcon: View {
             case .calendar:
                 Image(systemName: "calendar")
                     .font(.system(size: spec.calendarPointSize, weight: .regular))
-                    .foregroundStyle(Color(red: 0xE6 / 255, green: 0xEE / 255, blue: 1))
+                    .foregroundStyle(AppTheme.primaryText)
                     .frame(width: spec.calendarSize, height: spec.calendarSize)
                     .opacity(spec.calendarOpacity)
                     .offset(y: spec.glyphVerticalOffset)
             case .generic:
                 Image(systemName: "questionmark")
                     .font(.system(size: spec.genericPointSize, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.80))
+                    .foregroundStyle(AppTheme.primaryText)
             }
         }
         .frame(width: spec.ringSize, height: spec.ringSize)
@@ -122,7 +89,7 @@ private struct ClockGlyph: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color(red: 0xE6 / 255, green: 0xEE / 255, blue: 1), lineWidth: strokeWidth)
+                .stroke(AppTheme.primaryText, lineWidth: strokeWidth)
 
             Path { path in
                 let center = CGPoint(x: size / 2, y: size / 2)
@@ -133,7 +100,7 @@ private struct ClockGlyph: View {
                 path.addLine(to: CGPoint(x: center.x + 10.5 * scale, y: center.y + 8.5 * scale))
             }
             .stroke(
-                Color(red: 0xE6 / 255, green: 0xEE / 255, blue: 1),
+                AppTheme.primaryText,
                 style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)
             )
         }

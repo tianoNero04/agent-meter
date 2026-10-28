@@ -58,7 +58,7 @@ struct ProviderIconTab: View {
                         .opacity(isSelected ? 1.0 : (isHovered ? 0.9 : 0.6))
                 }
 
-                // 选中态高能荧光绿边框高光
+                // 选中态高能绿色边框高光
                 if isSelected {
                     SelectedTabChip()
                         .matchedGeometryEffect(id: "selectedTab", in: namespace)
@@ -76,12 +76,12 @@ struct ProviderIconTab: View {
     }
 }
 
-/// 选中态平面构成主义指示框：与方块图标完全等大的荧光绿发丝反光边框
+/// 选中态平面构成主义指示框：与方块图标完全等大的绿色发丝反光边框
 struct SelectedTabChip: View {
     var body: some View {
         RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-            .stroke(AppTheme.neonGreenBorder, lineWidth: 1.0)
-            .shadow(color: AppTheme.neonGreen.opacity(0.35), radius: 1.5)
+            .stroke(AppTheme.accentBorder, lineWidth: 1.0)
+
     }
 }
 

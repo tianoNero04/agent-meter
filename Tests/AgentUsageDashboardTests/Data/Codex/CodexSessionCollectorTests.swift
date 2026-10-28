@@ -2,6 +2,33 @@ import XCTest
 @testable import AgentUsageDashboardKit
 
 final class CodexSessionCollectorTests: XCTestCase {
+    func testAppendReadsOnlyNewBytesAndPreservesCumulativeModelState() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let sessions = root.appendingPathComponent(".codex/sessions")
+        try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let file = sessions.appendingPathComponent("session.jsonl")
+        let initial = """
+        {"payload":{"type":"turn_context","model":"gpt-test"}}
+        {"payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":10,"output_tokens":2}}}}
+        """ + "\n"
+        let appended = #"{"payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":15,"output_tokens":3}}}}"# + "\n"
+        try initial.write(to: file, atomically: true, encoding: .utf8)
+        let collector = CodexSessionCollector(homeURL: root)
+        _ = collector.collect()
+        let initialRead = collector.parsedByteCount
+        let handle = try FileHandle(forWritingTo: file)
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data(appended.utf8))
+        try handle.close()
+        let updated = collector.collect()
+        XCTAssertEqual(updated.tokenUsage.total, 18)
+        XCTAssertEqual(updated.models.first?.model, "gpt-test")
+        XCTAssertEqual(collector.parsedByteCount - initialRead, UInt64(appended.utf8.count))
+        try appended.write(to: file, atomically: true, encoding: .utf8)
+        XCTAssertEqual(collector.collect().tokenUsage.total, 18, "替换文件必须重新建立累计基准")
+    }
+
     func testCodexCollectorAggregatesLastTokenUsageAndRateLimits() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("codex-fixture-\(UUID().uuidString)", isDirectory: true)

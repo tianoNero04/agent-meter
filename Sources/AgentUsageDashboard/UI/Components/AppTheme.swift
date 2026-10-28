@@ -1,46 +1,26 @@
 import SwiftUI
 
-/// 国际主义（Swiss Style）与杂志风核心主题系统
+/// 瑞士国际主义：中性黑灰、绿色功能强调、纯色平面构成。
 enum AppTheme {
-    // 瑞士纯正深黑底色（纯正炭黑 #060709，消除光污染）
-    static let background = Color(red: 0.024, green: 0.027, blue: 0.035) // #060709
-    // 工业网格模块底色（低饱和沉稳暗黑 #0D0F13）
-    static let surface = Color(red: 0.051, green: 0.059, blue: 0.075)    // #0D0F13
-    // 次级抬升表面（用于标签、按压态 #13161B）
-    static let elevated = Color(red: 0.075, green: 0.086, blue: 0.106)   // #13161B
-
-    // 纯白高对比度文字
-    static let primaryText = Color(red: 0.973, green: 0.976, blue: 0.980)
-    // 冷银灰题注与技术参数
-    static let secondaryText = Color(red: 0.520, green: 0.570, blue: 0.640)
-    // 极淡辅助标注色
-    static let tertiaryText = Color(red: 0.360, green: 0.400, blue: 0.470)
-
-    // 0.5pt ~ 1pt 精确发丝线分割线
-    static let hairline = Color.white.opacity(0.10)
-    // 聚焦与高光发丝线
-    static let hairlineBright = Color.white.opacity(0.24)
-
-    // 纯正高能荧光绿（Electric Neon Green），平面构成主义核心数据与指示强调色
-    static let neonGreen = Color(red: 0.000, green: 1.000, blue: 0.400) // #00FF66
-    // 荧光绿微光与环境光晕
-    static let neonGreenGlow = Color(red: 0.000, green: 1.000, blue: 0.400).opacity(0.18)
-    // 荧光绿边框线
-    static let neonGreenBorder = Color(red: 0.000, green: 1.000, blue: 0.400).opacity(0.40)
-
-    // 国际克莱因蓝（保留作为历史引用兼容）
-    static let codex = Color(red: 0.000, green: 1.000, blue: 0.400)      // 升级为高能荧光绿
-    static let kimi = Color(red: 0.000, green: 1.000, blue: 0.400)
-
-    // 正常在线状态（精密荧光绿点）
-    static let success = Color(red: 0.000, green: 1.000, blue: 0.400)
-    // 警告/降级状态
-    static let warning = Color(red: 1.000, green: 0.600, blue: 0.150)
-
-    // 常用网格圆角（硬朗紧凑的工业微圆角，杜绝过度圆润膨胀）
-    static let gridCornerRadius: CGFloat = 6.0
-    static let geometricRadius: CGFloat = 4.0
-    static let cardCornerRadius: CGFloat = 8.0
+    static let background = Color(white: 17.0 / 255) // #111111
+    static let surface = Color(white: 25.0 / 255) // #191919
+    static let elevated = Color(white: 34.0 / 255) // #222222
+    static let primaryText = Color(white: 238.0 / 255) // #EEEEEE
+    static let secondaryText = Color(white: 180.0 / 255) // #B4B4B4
+    static let tertiaryText = Color(white: 155.0 / 255)
+    static let hairline = Color(white: 48.0 / 255)
+    static let hairlineBright = Color(white: 112.0 / 255)
+    static let accent = Color(red: 61.0 / 255, green: 214.0 / 255, blue: 140.0 / 255) // #3DD68C
+    static let accentBorder = accent
+    static let selection = Color(red: 19.0 / 255, green: 45.0 / 255, blue: 33.0 / 255)
+    static let success = accent
+    static let warning = Color(red: 1, green: 0.72, blue: 0.35)
+    // 用量构成以明度与文字标签区分，缓存保留品牌绿。
+    static let chartInput = Color(white: 0.68)
+    static let chartOutput = Color(white: 0.40)
+    static let gridCornerRadius: CGFloat = 4
+    static let geometricRadius: CGFloat = 4
+    static let cardCornerRadius: CGFloat = 4
 }
 
 extension Provider {
@@ -62,7 +42,7 @@ extension Provider {
         }
     }
 
-    /// 统一遵循 AGENTS.md 约定：所有 Provider 共用固定蓝 AppTheme.codex
-    var accentColor: Color { AppTheme.codex }
+    /// 所有 Provider 共用绿色功能强调色。
+    var accentColor: Color { AppTheme.accent }
 }
 

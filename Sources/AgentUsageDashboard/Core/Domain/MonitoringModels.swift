@@ -19,8 +19,9 @@ struct ProviderBreakdownItem: Identifiable, Hashable, Sendable {
     let displayName: String
     /// 徽标标签（如 "CODEX", "KIMI"）
     let badgeText: String
-    /// 估算会话或交互次数
-    let requestsCount: Int
+    /// 真实请求次数；当前日志分桶没有此字段，不以 Token 数推算。
+    let requestsCount: Int?
+    let estimatedCacheSavings: Double
     /// 普通输入 Token 数
     let inputTokens: Int
     /// Prompt 缓存命中读取 Token 数
@@ -38,18 +39,20 @@ struct ProviderBreakdownItem: Identifiable, Hashable, Sendable {
         provider: Provider,
         displayName: String,
         badgeText: String,
-        requestsCount: Int,
+        requestsCount: Int? = nil,
         inputTokens: Int,
         cachedTokens: Int,
         outputTokens: Int,
         totalTokens: Int,
         shareRatio: Double,
-        estimatedCost: Double
+        estimatedCost: Double,
+        estimatedCacheSavings: Double = 0
     ) {
         self.provider = provider
         self.displayName = displayName
         self.badgeText = badgeText
         self.requestsCount = requestsCount
+        self.estimatedCacheSavings = estimatedCacheSavings
         self.inputTokens = inputTokens
         self.cachedTokens = cachedTokens
         self.outputTokens = outputTokens
@@ -109,8 +112,8 @@ struct MonitoringOverviewSummary: Hashable, Sendable {
     let cacheSavingsDisplay: String
     /// 预估总法币花费金额
     let totalEstimatedCost: Double
-    /// 预估交互/请求总数
-    let totalRequestsCount: Int
+    /// 真实请求总数；日志未提供时为 nil。
+    let totalRequestsCount: Int?
 
     init(
         totalTokens: Int,
@@ -118,7 +121,7 @@ struct MonitoringOverviewSummary: Hashable, Sendable {
         cacheHitRate: Double,
         cacheSavingsDisplay: String,
         totalEstimatedCost: Double,
-        totalRequestsCount: Int
+        totalRequestsCount: Int?
     ) {
         self.totalTokens = totalTokens
         self.tokensDeltaRatio = tokensDeltaRatio

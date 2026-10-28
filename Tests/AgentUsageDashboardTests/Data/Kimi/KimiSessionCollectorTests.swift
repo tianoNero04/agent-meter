@@ -2,6 +2,48 @@ import XCTest
 @testable import AgentUsageDashboardKit
 
 final class KimiSessionCollectorTests: XCTestCase {
+    func testPartialRecordCompletionAndInPlaceRewriteDoNotDoubleCount() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let sessions = root.appendingPathComponent(".kimi-code/sessions/a")
+        try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let file = sessions.appendingPathComponent("wire.jsonl")
+        let first = #"{"usage":{"inputOther":4,"output":1}}"# + "\n"
+        try (first + #"{"usage":"#).write(to: file, atomically: true, encoding: .utf8)
+        let collector = KimiSessionCollector(homeURL: root)
+        XCTAssertEqual(collector.collect().tokenUsage.total, 5)
+        let handle = try FileHandle(forWritingTo: file)
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data("{\"inputOther\":2}}\n".utf8))
+        try handle.close()
+        XCTAssertEqual(collector.collect().tokenUsage.total, 7)
+        let replacement = #"{"usage":{"inputOther":9},"ignored":"longer replacement record that changes the original prefix"}"# + "\n"
+        try replacement.write(to: file, atomically: false, encoding: .utf8)
+        XCTAssertEqual(collector.collect().tokenUsage.total, 9)
+    }
+
+    func testAppendReadsOnlyNewBytesAndReplacementResetsTotals() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let sessions = root.appendingPathComponent(".kimi-code/sessions/a")
+        try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let file = sessions.appendingPathComponent("wire.jsonl")
+        let initial = #"{"model":"k3","usage":{"inputOther":10,"output":2}}"# + "\n"
+        let appended = #"{"model":"k3","usage":{"inputOther":5,"output":1}}"# + "\n"
+        try initial.write(to: file, atomically: true, encoding: .utf8)
+        let collector = KimiSessionCollector(homeURL: root)
+        _ = collector.collect()
+        let initialRead = collector.parsedByteCount
+        let handle = try FileHandle(forWritingTo: file)
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data(appended.utf8))
+        try handle.close()
+        XCTAssertEqual(collector.collect().tokenUsage.total, 18)
+        XCTAssertEqual(collector.parsedByteCount - initialRead, UInt64(appended.utf8.count))
+        try appended.write(to: file, atomically: true, encoding: .utf8)
+        XCTAssertEqual(collector.collect().tokenUsage.total, 6)
+    }
+
     func testKimiCollectorMapsWireUsageFields() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("kimi-fixture-\(UUID().uuidString)", isDirectory: true)

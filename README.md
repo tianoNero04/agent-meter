@@ -1,59 +1,167 @@
 # Agent Meter
 
-一个低资源、原生 macOS 菜单栏用量仪表盘，面向 Codex、Kimi Code 和 Antigravity。
+**在 macOS 菜单栏，查看 AI 编程工具的剩余额度与 Token 用量。**
 
-点击右上角图标后，App 会打开固定尺寸的用量弹窗并刷新账号级数据；平时只保留轻量的菜单栏进程和文件事件监听。
+Agent Meter 将 Codex、Kimi Code 的账号额度与本机用量汇集到一个原生界面，并提供 Antigravity 数据接入。点击菜单栏图标即可查看额度和重置时间；需要进一步分析时，打开控制中心查看趋势、模型用量与成本估算。
 
-## 当前能力
+基于 SwiftUI 构建，采用炭黑与绿色的扁平设计。不做持续网络轮询，让用量信息在需要时出现。
 
-- macOS 原生 SwiftUI `MenuBarExtra`，最低 macOS 13 Ventura。
-- App 图标源文件位于 `assets/image.png`，打包脚本会自动按照 Apple HIG 规范裁切为标准纯净连续超椭圆圆角（Squircle），与系统 Dock 原生材质与投影无缝融合，生成多尺寸 `AppIcon.icns` 并写入 App 包。弹窗 Logo 使用 `Sources/AgentUsageDashboard/Resources/AgentMeterLogoWhite.png` 的透明白色版本，不改变 App 图标源。
-- 视觉概念图归档在 `assets/references/agent-concept.png`；弹窗界面完全采用原生 SwiftUI 矢量布局与暗色材质绘制，不使用静态背景贴图。
-- 点击弹窗左上角 Logo 或右上角控制台按钮，可唤起原生“Agent Meter 控制中心”总窗口；窗口打开时动态在 Dock 显示图标，关闭后无缝恢复为轻量纯菜单栏模式。
-- 控制中心采用固定 220pt 现代深色侧边栏（像素级复刻 ReactBits Pro `app-sidebar-1` 风格），内置 5 大专业面板：通用系统设置（开机自启）、服务商管理与按需通道测速雷达、主流模型定价矩阵与多币种成本换算（支持从 `models.dev` 在线同步官方最新费率并高亮标示本机使用模型）、0-HTTP 本地原生日历重置提醒闹钟与低额度预警、Prompt Caching 缓存省钱感知看板与模型对账。
-- 杂志风与国际主义设计（Swiss Style）：深墨黑 `#0A0C10`、网格表面 `#11151C`、`0.75pt` 发丝线与微型 20 格精密分段能量标尺。
-- 真实多模型动态加权计费：精准匹配 2026 年最新主流模型（如 `gpt-5.6-luna`、`gpt-5.6-sol`、`gpt-5.5`、`k3-256k`、`kimi-for-coding` 等），智能剔除组织前缀与别名映射；监控大盘按本地各模型实际消耗比例进行精确加权成本与缓存节省换算，杜绝老旧单一模型硬编码带来的费率失真。
-- Codex / Kimi 账号额度：仿照 `cc-switch` 模式，优先通过轻量级 HTTPS 直连接口（读取本地 Keychain 或 `~/.codex/auth.json`、`~/.kimi-code/credentials/kimi-code.json` 凭据直接请求官方后端，支持静默自动刷新），百毫秒级响应且无子进程开销；Codex 直连未果时平滑降级至 `codex app-server`。
-- Antigravity 额度与统计：对齐 `Antigravity-Manager`，优先读取本地 Keychain 或 `~/.antigravity_tools/accounts/` 凭据直接请求 Google Cloud Code 官方内部额度接口，提取 Gemini 5 小时与周额度窗口（统一视觉与倒计时样式）；本机日志从 `~/.antigravity_tools/token_stats.db` 聚合模型排行与 7 日动态趋势，并支持本地缓存秒级离线呈现。
-- 打开面板才查询，平时不查询：带 30 秒智能防刷冷却，频繁打开自动复用内存快照避免限频；面板关闭立即中断在途请求，后台常驻期间绝无网络活动。
-- Codex/Kimi 用量统计对齐 `cc-switch`：精准解析会话日志中的 `last_token_usage` 与 `total_token_usage` 增量 delta，兼容 `cached_input_tokens` 与 `cache_read_input_tokens`，在面板中展示真实算力消耗、输入输出细分与缓存命中率（Cache Hit Rate），并按日聚合 7 天趋势分桶。
-- 5 小时额度显示相对重置时长，周额度显示具体重置时间；服务端没有返回的窗口不会被 UI 猜测补齐。
-- 本地日志变化时只增量更新本地 Token 统计；不轮询、不触发网络请求。
-- 本地保存最近 30 天快照到 `~/Library/Application Support/AgentUsageDashboard/snapshots.json`。
-- 隐私保障：不保存提示词、回复、代码正文或登录凭证。
+[快速开始](#快速开始) · [支持范围](#支持范围) · [数据与隐私](#数据与隐私) · [开发与贡献](#开发与贡献)
 
-## 数据边界
+## 能做什么
 
-账号额度和账号 Token 总量是跨设备的服务器数据；本机模型排行只代表当前 Mac 的日志观测值。Codex、Kimi Code 与 Antigravity 均通过各自的轻量官方直连接口获取实时 5 小时与周额度，不制造虚假的账号级百分比。
+- **快速查看额度** — 展示服务端返回的额度窗口、剩余百分比与重置时间。只返回周额度时，不额外显示 5 小时额度。
+- **了解本机用量** — 查看 Token 趋势、模型排行、输入输出与缓存使用情况，区分账号数据和当前 Mac 的日志统计。
+- **估算使用成本** — 按模型费率折算用量，查看缓存节省估算；支持同步模型价格、按服务商筛选和行内调整费率。
+- **按需刷新** — 打开弹窗或手动操作时查询账号数据；本地日志变化只更新本机统计，不触发账号查询。
+- **原生桌面体验** — 菜单栏常驻、独立控制中心、服务商开关与诊断页面，无需打开浏览器。
 
-## 使用
+> 成本数字是 API 费率等值估算，不是订阅账单，也不是服务商实际扣费。
 
-先完成官方 CLI 登录：
+## 支持范围
+
+| 工具 | 账号额度 | 本机 Token 与模型统计 | 接入条件 |
+| --- | --- | --- | --- |
+| Codex | 支持，优先直连；失败时尝试 App Server | 读取本机会话日志 | 已在本机登录，使用 App Server 兜底时需安装 Codex CLI |
+| Kimi Code | 支持，通过账号接口查询 | 读取本机会话日志 | 已在本机登录，存在可用凭据与会话记录 |
+| Antigravity | 已接入，依赖兼容凭据及上游接口 | 读取 Antigravity 工具生成的统计数据库 | 存在兼容账号数据；本机统计需 `token_stats.db` |
+
+Antigravity 使用的上游内部接口可能发生变化；仅安装客户端不保证可以读取额度或统计。
+
+服务商与诊断页还可以识别其他本机工具。**识别到安装状态不代表已支持其额度或 Token 采集。** 同样，模型定价列表中出现某个服务商，也不代表已接入该服务商账号。
+
+## 快速开始
+
+目前本文提供从源码构建的使用方式。
+
+### 1. 准备环境
+
+- macOS 13 Ventura 或更新版本。
+- Swift 5.9 或更新工具链，可使用 Xcode 提供的工具链。
+- Git。
+- 打包 App 需要 Python 3 与 Pillow；图标处理同时使用 macOS 自带的 `sips` 和 `iconutil`。
+- 在需要监测的工具中完成登录。Agent Meter 复用本机已有凭据，不提供独立的账号登录流程。
+
+### 2. 获取源码并打包
 
 ```sh
-codex login
-kimi
-# 在 Kimi CLI 中完成 /login
-```
+git clone https://github.com/tianoNero04/agent-meter.git
+cd agent-meter
 
-然后用 Xcode 打开 `Package.swift`，选择 `AgentUsageDashboard` 运行。
+# 为图标打包依赖创建独立环境
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install Pillow
 
-也可以直接打包成菜单栏 App：
-
-```sh
 ./Scripts/package-app.sh
 open Build/AgentUsageDashboard.app
 ```
 
-打包脚本会使用 macOS 原生 `sips` 和 `iconutil` 从 `assets/image.png` 生成 App 图标，不需要手动准备 `.icns` 文件。
+应用启动后，在 macOS 菜单栏中点击 Agent Meter 图标。需要长期使用时，可将生成的 App 复制到“应用程序”目录。
 
-首版关闭 App Sandbox，因为需要在用户打开弹窗时启动本机已经安装的 `codex app-server`。App 只访问明确的 Codex/Kimi/Antigravity 数据路径（`~/.codex/sessions`、`~/.kimi-code/sessions`、`~/.antigravity_tools`），并在 README 中公开这些路径。
+打包脚本生成本机 Release 构建，不包含 Developer ID 签名、公证或自动更新流程。
 
-## 验证
+### 3. 开始查看
+
+1. 在菜单弹窗顶部切换服务商，查看账号额度与本机趋势。
+2. 点击弹窗 Logo 或控制中心按钮，打开完整统计与设置窗口。
+3. 在服务商设置中选择需要展示的工具。
+4. 在其他设备使用后，回到本机点击刷新，重新查询账号额度。
+
+短时间反复打开弹窗会复用缓存，账号自动查询设有 30 秒冷却；界面显示的内容不保证每次打开都来自一次新的网络请求。
+
+## 如何理解数据
+
+### 账号额度与本机用量不是一回事
+
+| 数据 | 来源与范围 |
+| --- | --- |
+| 账号剩余额度、重置时间 | 服务端账号数据，可反映其他设备的使用，具体以接口返回为准 |
+| 本机 Token、模型排行 | 当前 Mac 上可读取的日志或统计数据库，不汇总其他设备的日志 |
+| 费用与缓存节省 | 根据观测用量和配置费率计算的估算，不是实际账单 |
+
+5 小时额度显示相对重置时长，周额度显示具体日期时间。服务端未提供的数据不会被补成一个假额度；查询失败时可能保留上一份可用数据，请结合错误提示判断。
+
+### 趋势与历史
+
+Token 统计页目前汇总 Codex 和 Kimi Code：
+
+- **日**：近 7 天。
+- **周**：近 28 天，按连续 7 天分组。
+- **月**：包含当月的近 3 个自然月，截至今天。
+
+摘要、图表和明细使用相同的时间范围；点击图表柱子可查看对应时段，再次点击取消选择。历史不足时不会补造用量。
+
+历史日分桶只有 Token 总量，输入、缓存、输出/推理构成及费用按累计模型构成估算；缺少构成时按输入 Token 估算。模型排行采用本机累计口径，不等同于趋势页选中时段。应用不根据 Token 数推算请求次数。
+
+### 模型价格
+
+价格目录可从 models.dev 同步，支持按服务商筛选；Gemini、Gemma 归类为 Google。修改费率后，仅与同步基准不同的条目显示恢复按钮。再次同步会更新基准，并保留仍有差异的手动调整。
+
+模型费率不是套餐额度：价格列表完整，不代表账号接口能够返回所有模型的额度。
+
+## 数据与隐私
+
+Agent Meter 在本机解析用量记录，不将提示词、回复、代码正文或完整会话日志写入自己的统计快照，也不在快照中保存登录令牌。
+
+账号查询需要读取本机已有凭据，并通过网络访问相应服务端；同步模型价格会访问 models.dev。因此，“本机统计”不等于应用完全离线。
+
+主要数据位置：
+
+| 位置 | 用途 |
+| --- | --- |
+| `~/.codex/auth.json`、系统钥匙串中的相关凭据 | Codex 账号查询 |
+| `~/.codex/sessions` | Codex 本机用量 |
+| `~/.kimi-code/credentials/kimi-code.json`、系统钥匙串中的相关凭据 | Kimi Code 账号查询 |
+| `~/.kimi-code/sessions` | Kimi Code 本机用量 |
+| `~/.antigravity_tools/accounts.json`、`accounts/`、`~/.gemini/` 中的兼容凭据及相关钥匙串项 | Antigravity 账号查询与缓存 |
+| `~/.antigravity_tools/token_stats.db` | Antigravity 本机统计 |
+| `~/Library/Application Support/AgentUsageDashboard/snapshots.json` | 最近 30 天的本地快照 |
+
+偏好和模型价格配置使用本机设置存储；环境诊断还会检查工具安装路径与应用元数据。当前未启用 App Sandbox，需要访问上述本机数据，并可能启动 Codex App Server 作为查询兜底。
+
+Kimi 凭据过期时，应用会尝试刷新令牌，并将刷新后的凭据写回原凭据文件；这与不在统计快照中保存令牌是两件不同的事。
+
+本地采集使用文件事件监听与增量解析，不持续扫描全部日志。弹窗关闭时取消在途账号刷新；没有固定周期的账号网络轮询。实际资源占用取决于日志体积、首次解析和工具环境。
+
+## 当前限制与排查
+
+- **只提供深色主题**；额度提醒尚未接入调度，不会发送提醒通知。
+- **显示未登录或查询失败**：先确认对应工具已登录，再查看“服务商与诊断”。上游接口、凭据格式或网络变化都可能影响查询。
+- **有额度但没有 Token 记录**：额度来自账号接口，本机统计需要当前 Mac 上存在可识别的使用记录。
+- **其他设备的消耗没有出现在模型排行**：这是预期行为；排行只统计当前 Mac。
+- **打包提示缺少 PIL**：确认已激活上面的 Python 环境，并安装 Pillow。
+- **Xcode 预览提示构建布局问题**：选择 `AgentUsageDashboardKit` scheme 进行 Canvas 预览，而不是可执行程序 scheme。
+
+## 开发与贡献
 
 ```sh
-swift test
 swift build
+swift test
 ```
 
-如果当前终端的 SwiftPM 缓存目录不可写，可把 SwiftPM 的 `--cache-path` 和 `--scratch-path` 指向一个可写的临时目录。
+用 Xcode 打开 `Package.swift`，选择 `AgentUsageDashboard` 运行应用；预览入口位于 `Sources/AgentUsageDashboard/UI/MenuBar/PopoverPreviews.swift`。
+
+代码按职责分层：
+
+```text
+Sources/
+├── AgentUsageDashboard/
+│   ├── App/         # 生命周期与依赖组装
+│   ├── Core/        # 领域模型与协议
+│   ├── Data/        # 采集、网络与持久化
+│   ├── Features/    # 刷新编排与应用状态
+│   └── UI/          # 原生界面
+└── AgentUsageDashboardLauncher/
+Tests/               # 单元与回归测试
+```
+
+- [设计规范](DESIGN.md)：配色、排版、交互与视觉边界。
+- [开发约定](AGENTS.md)：模块依赖、性能、隐私与测试要求。
+- [提交问题](https://github.com/tianoNero04/agent-meter/issues)：请附 macOS 版本、构建方式、相关工具及复现步骤；日志和截图请先删除邮箱、令牌与会话内容。
+
+当前仓库尚未提供 LICENSE 文件；许可证待维护者明确。
+
+---
+
+Agent Meter 是独立项目，非所列工具或服务商的官方产品。产品名称与商标归各自所有者。

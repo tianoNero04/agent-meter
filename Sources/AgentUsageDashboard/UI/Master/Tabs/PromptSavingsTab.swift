@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Prompt Caching 缓存省钱感知看板与模型对账面板
+/// 缓存统计看板与模型对账面板
 struct PromptSavingsTab: View {
     @ObservedObject var model: DashboardModel
     @State private var preferences: PricingPreferences
@@ -20,24 +20,19 @@ struct PromptSavingsTab: View {
                 HStack(spacing: 8) {
                     Image(systemName: "bolt.shield")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(AppTheme.codex)
+                        .foregroundStyle(AppTheme.accent)
 
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("Prompt Caching 缓存省钱感知")
-                            .font(.system(size: 14, weight: .bold))
+                        Text("缓存统计")
+                            .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(AppTheme.primaryText)
-
-                        Text("SAVINGS // CACHE.EFFICIENCY")
-                            .font(.system(size: 8.5, weight: .medium, design: .monospaced))
-                            .tracking(0.8)
-                            .foregroundStyle(AppTheme.tertiaryText)
                     }
 
                     Spacer()
                 }
 
                 // 核心省钱高亮看板
-                HStack(spacing: 14) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 14)], spacing: 14) {
                     // 省钱金额大卡片
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Prompt Caching 为您节省")
@@ -47,15 +42,16 @@ struct PromptSavingsTab: View {
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Text(preferences.targetCurrency.symbol)
                                 .font(.system(size: 18, weight: .bold))
-                                .foregroundStyle(AppTheme.codex)
+                                .foregroundStyle(AppTheme.accent)
 
                             Text(String(format: "%.2f", totalSavings))
-                                .font(.system(size: 28, weight: .heavy, design: .monospaced))
+                                .lineLimit(1).minimumScaleFactor(0.6)
+                                .font(.system(size: 28, weight: .semibold, design: .monospaced))
                                 .foregroundStyle(AppTheme.primaryText)
                         }
 
-                        Text("基于官方上下文缓存折扣折算 · 纯本地毫秒级计算")
-                            .font(.system(size: 9.5, weight: .regular))
+                        Text("本机累计用量按模型费率折算")
+                            .font(.system(size: 11, weight: .regular))
                             .foregroundStyle(AppTheme.tertiaryText)
                     }
                     .padding(16)
@@ -65,7 +61,7 @@ struct PromptSavingsTab: View {
                             .fill(AppTheme.surface)
                             .overlay(
                                 RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
-                                    .stroke(AppTheme.codex.opacity(0.3), lineWidth: 0.75)
+                                    .stroke(AppTheme.hairline, lineWidth: 0.75)
                             )
                     )
 
@@ -81,12 +77,13 @@ struct PromptSavingsTab: View {
                                 .foregroundStyle(AppTheme.secondaryText)
 
                             Text(String(format: "%.2f", totalCost))
-                                .font(.system(size: 28, weight: .heavy, design: .monospaced))
+                                .lineLimit(1).minimumScaleFactor(0.6)
+                                .font(.system(size: 28, weight: .semibold, design: .monospaced))
                                 .foregroundStyle(AppTheme.primaryText)
                         }
 
-                        Text("已抵扣缓存优惠后的净支出估算")
-                            .font(.system(size: 9.5, weight: .regular))
+                        Text("API 费率折算，非实际账单")
+                            .font(.system(size: 11, weight: .regular))
                             .foregroundStyle(AppTheme.tertiaryText)
                     }
                     .padding(16)
@@ -111,7 +108,7 @@ struct PromptSavingsTab: View {
                         Spacer()
 
                         Text("模型 / 缓存命中率 / 估算花费")
-                            .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+                            .font(.system(size: 11, weight: .medium, design: .monospaced))
                             .foregroundStyle(AppTheme.tertiaryText)
                     }
 
@@ -141,7 +138,7 @@ struct PromptSavingsTab: View {
                                             .foregroundStyle(AppTheme.primaryText)
 
                                         Text("总计: \(formatTokens(item.usage.total)) · 缓存命中: \(formatPercent(item.usage.cacheHitRate))")
-                                            .font(.system(size: 10, weight: .regular))
+                                            .font(.system(size: 11, weight: .regular))
                                             .foregroundStyle(AppTheme.tertiaryText)
                                     }
 
@@ -173,7 +170,7 @@ struct PromptSavingsTab: View {
 
                 Spacer(minLength: 20)
             }
-            .padding(.top, 44)
+            .padding(.top, 24)
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
         }

@@ -88,28 +88,48 @@ final class ModelPricingSyncService: Sendable {
         return try parseModels(from: data)
     }
 
-    /// 将远端最新定价合并到本地偏好并完成持久化
+    /// 用远端最新定价替换官方基准，并保留与新基准不同的本机手动覆盖
     func syncAndSave(store: PricingSettingsStore) async throws -> (updatedCount: Int, totalCount: Int) {
         let fetchedPricings = try await fetchLatestPricings()
-        var preferences = store.load()
+        guard !fetchedPricings.isEmpty else {
+            throw ModelPricingSyncError.parsingFailure("未找到可同步的模型定价，已保留上次有效数据")
+        }
 
-        var updated = 0
+        var preferences = store.load()
+        let previousPricings = preferences.syncedPricings
+        var latestPricings: [String: ModelPricing] = [:]
+
         for item in fetchedPricings {
             // 严格以规范化模型标识为主键
             let canonicalKey = DefaultModelPricings.normalizeModelName(item.modelName)
             var canonicalItem = item
             canonicalItem.modelName = canonicalKey
-
-            // 如果不存在或价格有差异，更新规范条目
-            if preferences.customPricings[canonicalKey] != canonicalItem {
-                preferences.customPricings[canonicalKey] = canonicalItem
-                updated += 1
-            }
+            latestPricings[canonicalKey] = canonicalItem
         }
 
-        preferences.sanitizeCustomPricings()
+        let changedKeys = Set(previousPricings.keys).union(latestPricings.keys).filter {
+            previousPricings[$0] != latestPricings[$0]
+        }
+        preferences.syncedPricings = latestPricings
+
+        // 同步后，已与最新官方价格一致的覆盖不再算作本机改价；
+        // 已不在最新目录且没有内置官方基准的覆盖也不保留为陈旧条目。
+        preferences.customOverrides = preferences.customOverrides.filter { key, override in
+            let official = latestPricings[key] ?? DefaultModelPricings.presets.first(where: { $0.modelName == key })
+            guard let official else { return false }
+            return !Self.hasSameRates(override, official)
+        }
+
+        preferences.sanitizePricings()
         store.save(preferences)
-        return (updated, fetchedPricings.count)
+        return (changedKeys.count, fetchedPricings.count)
+    }
+
+    private static func hasSameRates(_ lhs: ModelPricing, _ rhs: ModelPricing) -> Bool {
+        lhs.inputPerMillion == rhs.inputPerMillion &&
+        lhs.cacheReadPerMillion == rhs.cacheReadPerMillion &&
+        lhs.outputPerMillion == rhs.outputPerMillion &&
+        lhs.baseCurrency == rhs.baseCurrency
     }
 
     /// 解析 models.dev 的 JSON 字典结构，并基于规范化模型 ID 严格去重

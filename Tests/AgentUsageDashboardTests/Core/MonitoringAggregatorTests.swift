@@ -2,6 +2,59 @@ import XCTest
 @testable import AgentUsageDashboardKit
 
 final class MonitoringAggregatorTests: XCTestCase {
+    func testRangeSummaryAndRowsExcludeLifetimeTotalsAndUseConfiguredSavings() throws {
+        let aggregator = MonitoringAggregator(calendar: calendar, now: fixedNow)
+        var pricing = PricingPreferences(targetCurrency: .usd)
+        pricing.customOverrides["gpt-test"] = ModelPricing(modelName: "gpt-test", inputPerMillion: 10, cacheReadPerMillion: 2, outputPerMillion: 4)
+        var snapshot = ProviderSnapshot.empty(.codex)
+        snapshot.localTokenUsage = TokenUsage(input: 1_000_000, cachedInput: 500_000, output: 400_000, reasoning: 100_000)
+        snapshot.localModels = [ModelUsage(model: "gpt-test", usage: snapshot.localTokenUsage)]
+        let today = calendar.startOfDay(for: fixedNow)
+        snapshot.localDailyBuckets = [
+            DailyTokenBucket(startDate: today, tokens: 100_000),
+            DailyTokenBucket(startDate: calendar.date(byAdding: .day, value: -1, to: today)!, tokens: 200_000),
+            DailyTokenBucket(startDate: calendar.date(byAdding: .day, value: -20, to: today)!, tokens: 1_700_000)
+        ]
+        let buckets = aggregator.aggregateBuckets(codex: snapshot, kimi: .empty(.kimiCode), granularity: .daily, pricing: pricing)
+        let rows = aggregator.aggregateBreakdown(buckets: buckets, selectedBucket: nil)
+        let row = try XCTUnwrap(rows.first { $0.provider == .codex })
+        XCTAssertEqual(row.totalTokens, 300_000)
+        XCTAssertEqual(row.inputTokens, 150_000)
+        XCTAssertEqual(row.cachedTokens, 75_000)
+        XCTAssertEqual(row.outputTokens, 75_000)
+        XCTAssertEqual(row.estimatedCost, 1.95, accuracy: 0.000001)
+        let summary = aggregator.calculateSummary(buckets: buckets, selectedBucket: nil, pricing: pricing)
+        XCTAssertEqual(summary.totalTokens, 300_000)
+        XCTAssertEqual(summary.totalEstimatedCost, 1.95, accuracy: 0.000001)
+        XCTAssertEqual(summary.cacheSavingsDisplay, "$0.60")
+        let selected = aggregator.calculateSummary(buckets: buckets, selectedBucket: buckets.last, pricing: pricing)
+        XCTAssertEqual(selected.totalTokens, 100_000)
+        XCTAssertEqual(selected.totalEstimatedCost, 0.65, accuracy: 0.000001)
+        XCTAssertEqual(selected.cacheSavingsDisplay, "$0.20")
+        XCTAssertEqual(aggregator.aggregateBreakdown(buckets: buckets, selectedBucket: buckets.last).first?.totalTokens, 100_000)
+    }
+
+    func testEmptyRangeDoesNotBorrowAnOutOfRangeSelection() {
+        let aggregator = MonitoringAggregator(calendar: calendar, now: fixedNow)
+        let stale = TokenDistributionBucket(startDate: fixedNow, label: "old", fullDescription: "old", totalTokens: 100, codexTokens: 100, kimiTokens: 0)
+        let summary = aggregator.calculateSummary(buckets: [], selectedBucket: stale, pricing: PricingPreferences())
+        XCTAssertEqual(summary.totalTokens, 0)
+        XCTAssertEqual(summary.totalEstimatedCost, 0)
+        XCTAssertEqual(aggregator.aggregateBreakdown(buckets: [], selectedBucket: stale), [])
+    }
+
+    func testNoRequestCountsAreInventedFromTokenTotals() {
+        let aggregator = MonitoringAggregator(calendar: calendar, now: fixedNow)
+        var snapshot = ProviderSnapshot.empty(.codex)
+        snapshot.localTokenUsage = TokenUsage(input: 100, reasoning: 50)
+        snapshot.localDailyBuckets = [DailyTokenBucket(startDate: calendar.startOfDay(for: fixedNow), tokens: 10)]
+        let buckets = aggregator.aggregateBuckets(codex: snapshot, kimi: .empty(.kimiCode), granularity: .daily, pricing: PricingPreferences())
+        let row = buckets.last!.providerBreakdown[0]
+        XCTAssertNil(row.requestsCount)
+        XCTAssertEqual(row.inputTokens + row.cachedTokens + row.outputTokens, 10)
+        XCTAssertNil(aggregator.calculateSummary(buckets: buckets, selectedBucket: nil, pricing: PricingPreferences()).totalRequestsCount)
+    }
+
     private var calendar: Calendar!
     private var fixedNow: Date!
 

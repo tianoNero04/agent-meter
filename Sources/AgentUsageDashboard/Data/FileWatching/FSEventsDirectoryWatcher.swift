@@ -34,7 +34,10 @@ final class FSEventsDirectoryWatcher: DirectoryWatcher {
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
             0.5,
             FSEventStreamCreateFlags(
+                // SQLite 的 WAL/SHM 维护与本机缓存写入不能反过来触发自己采集。
+                // 其他进程（Codex/Kimi CLI）的日志写入仍正常通知。
                 kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer
+                    | kFSEventStreamCreateFlagIgnoreSelf
             )
         )
 
