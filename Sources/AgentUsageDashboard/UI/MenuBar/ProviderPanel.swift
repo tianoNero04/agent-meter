@@ -117,29 +117,36 @@ private struct HeroAuroraBackground: View {
             let height = proxy.size.height
             ZStack {
                 LinearGradient(
-                    colors: [AppTheme.heroBackground, AppTheme.heroGreen.opacity(0.48)],
+                    colors: [AppTheme.heroBackground, AppTheme.heroGreen.opacity(0.62)],
                     startPoint: .leading,
                     endPoint: .trailing
                 )
                 RadialGradient(
-                    colors: [AppTheme.heroLight.opacity(0.72), AppTheme.accent.opacity(0.20), .clear],
+                    colors: [AppTheme.heroGreen.opacity(0.64), AppTheme.heroGreen.opacity(0.18), .clear],
+                    center: .topTrailing,
+                    startRadius: 0,
+                    endRadius: width * 0.58
+                )
+                .blur(radius: 18)
+                RadialGradient(
+                    colors: [AppTheme.heroLight.opacity(0.88), AppTheme.accent.opacity(0.40), AppTheme.heroGreen.opacity(0.12), .clear],
                     center: .center,
                     startRadius: 0,
-                    endRadius: width * 0.34
+                    endRadius: width * 0.46
                 )
-                .frame(width: width * 0.72, height: height * 2.8)
-                .position(x: width * 0.98, y: -height * 0.34)
-                .blur(radius: 12)
+                .frame(width: width * 1.08, height: height * 3.6)
+                .position(x: width * 1.02, y: -height * 0.22)
+                .blur(radius: 18)
                 .blendMode(.screen)
                 auroraPath(width: width, height: height)
-                    .stroke(AppTheme.accent.opacity(0.30), style: StrokeStyle(lineWidth: 28, lineCap: .round))
-                    .blur(radius: 16)
+                    .stroke(AppTheme.accent.opacity(0.40), style: StrokeStyle(lineWidth: 42, lineCap: .round))
+                    .blur(radius: 22)
                     .blendMode(.screen)
                 auroraPath(width: width, height: height)
-                    .stroke(AppTheme.heroLight.opacity(0.16), style: StrokeStyle(lineWidth: 7, lineCap: .round))
-                    .blur(radius: 5)
+                    .stroke(AppTheme.heroLight.opacity(0.20), style: StrokeStyle(lineWidth: 11, lineCap: .round))
+                    .blur(radius: 8)
                 auroraPath(width: width, height: height)
-                    .stroke(AppTheme.heroLight.opacity(0.38), lineWidth: 0.7)
+                    .stroke(AppTheme.heroLight.opacity(0.26), lineWidth: 0.6)
                 LinearGradient(
                     colors: [AppTheme.heroBackground.opacity(0.82), AppTheme.heroBackground.opacity(0.30), .clear],
                     startPoint: .leading,
