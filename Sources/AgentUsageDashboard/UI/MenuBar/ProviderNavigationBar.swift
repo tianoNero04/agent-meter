@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// 瑞士风格 Provider 图标导航栏组件：以紧凑高质感的微缩图标呈现提供者切换
 struct ProviderNavigationBar: View {
     @ObservedObject var model: DashboardModel
     @Binding var selection: PopoverSection
@@ -8,7 +9,7 @@ struct ProviderNavigationBar: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 9) {
             ForEach(model.navigation.visibleProviders, id: \.self) { provider in
                 ProviderIconTab(
                     provider: provider,
@@ -23,6 +24,7 @@ struct ProviderNavigationBar: View {
     }
 }
 
+/// 单项微缩图标切换按钮
 struct ProviderIconTab: View {
     let provider: Provider
     let isSelected: Bool
@@ -30,32 +32,40 @@ struct ProviderIconTab: View {
     let action: () -> Void
 
     @State private var isHovered = false
-    private let tabSize: CGFloat = 30
+
+    // 严谨等宽等高的 24x24 几何微方块
+    private let tabSize: CGFloat = 24
 
     var body: some View {
         Button(action: action) {
             ZStack {
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(isSelected ? AppTheme.accent.opacity(0.13) : Color.white.opacity(isHovered ? 0.09 : 0.035))
+                // Provider 专属高清图标或暗黑方块底衬
                 if let icon = BundleImages.providerIcon(for: provider) {
                     Image(nsImage: icon)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 22, height: 22)
-                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                        .opacity(isSelected ? 1.0 : (isHovered ? 0.92 : 0.68))
+                        .frame(width: tabSize, height: tabSize)
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous))
+                        .opacity(isSelected ? 1.0 : (isHovered ? 0.9 : 0.6))
                 } else {
+                    // 与位图图标统一形态的暗黑方块底衬
+                    RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                        .fill(AppTheme.elevated)
+                        .frame(width: tabSize, height: tabSize)
+
                     Image(systemName: provider.iconName)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(isSelected ? AppTheme.primaryText : AppTheme.secondaryText)
-                        .opacity(isSelected ? 1.0 : (isHovered ? 0.92 : 0.68))
+                        .opacity(isSelected ? 1.0 : (isHovered ? 0.9 : 0.6))
                 }
+
+                // 选中态高能绿色边框高光
                 if isSelected {
                     SelectedTabChip()
                         .matchedGeometryEffect(id: "selectedTab", in: namespace)
                 } else if isHovered {
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .stroke(Color.white.opacity(0.16), lineWidth: 0.75)
+                    RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                        .stroke(AppTheme.hairlineBright, lineWidth: 0.75)
                 }
             }
             .frame(width: tabSize, height: tabSize)
@@ -69,10 +79,12 @@ struct ProviderIconTab: View {
     }
 }
 
+/// 选中态平面构成主义指示框：与方块图标完全等大的绿色发丝反光边框
 struct SelectedTabChip: View {
     var body: some View {
-        RoundedRectangle(cornerRadius: 9, style: .continuous)
-            .stroke(AppTheme.accent.opacity(0.72), lineWidth: 1)
+        RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+            .stroke(AppTheme.accentBorder, lineWidth: 1.0)
+
     }
 }
 

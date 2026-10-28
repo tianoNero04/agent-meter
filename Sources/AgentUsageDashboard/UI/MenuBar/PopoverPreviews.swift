@@ -56,12 +56,6 @@ enum PreviewModels {
         ],
         accountUsage: AccountTokenUsage(lifetimeTokens: 210_000, peakDailyTokens: nil, dailyBuckets: nil),
         localTokenUsage: TokenUsage(input: 120_000, cachedInput: 40_000, output: 42_000, reasoning: 8_000),
-        localDailyBuckets: (0..<7).map { day in
-            DailyTokenBucket(
-                startDate: Date().addingTimeInterval(TimeInterval(day - 6) * 86400),
-                tokens: [82_000, 54_000, 68_000, 116_000, 138_000, 92_000, 128_000][day]
-            )
-        },
         localModels: [],
         source: "app-server + session-jsonl",
         collectedAt: Date(),
@@ -71,19 +65,11 @@ enum PreviewModels {
     static let kimiSnapshot = ProviderSnapshot(
         provider: .kimiCode,
         status: .connected,
-        account: AccountIdentity(planType: "kimi code", email: "登月者7632"),
-        windows: [
-            RateLimitWindow(id: "kimi.primary", usedPercent: 74, windowMinutes: 300, resetsAt: Date().addingTimeInterval(7_080)),
-            RateLimitWindow(id: "kimi.secondary", usedPercent: 29, windowMinutes: 10080, resetsAt: Date().addingTimeInterval(4 * 86400))
-        ],
+        account: nil,
+        windows: [],
         accountUsage: nil,
-        localTokenUsage: TokenUsage(input: 168_000_000, cachedInput: 5_432_000_000, output: 23_700_000, reasoning: 0),
-        localDailyBuckets: (0..<7).map { day in
-            DailyTokenBucket(
-                startDate: Date().addingTimeInterval(TimeInterval(day - 6) * 86400),
-                tokens: [620_000_000, 440_000_000, 510_000_000, 980_000_000, 1_220_000_000, 1_060_000_000, 793_700_000][day]
-            )
-        },
+        localTokenUsage: TokenUsage(input: 80_000, cachedInput: 20_000, output: 30_000, reasoning: 0),
+        localDailyBuckets: [],
         localModels: [],
         source: "wire-jsonl",
         collectedAt: Date(),
@@ -93,7 +79,7 @@ enum PreviewModels {
 
 #Preview("菜单栏弹窗") {
     PopoverView(model: PreviewModels.dashboard())
-        .frame(width: 404, height: 472)
+        .frame(width: 390, height: 425)
 }
 
 #Preview("弹窗 · 长账号与刷新错误") {
@@ -104,9 +90,9 @@ enum PreviewModels {
     )
     snapshot.errorMessage = "账号接口暂时不可用，已保留上一次成功查询的额度数据"
     return ProviderPanel(snapshot: snapshot, isRefreshing: false, lastRefresh: Date(), refresh: {})
-        .frame(width: 380, height: 370)
+        .frame(width: 366, height: 340)
         .padding()
-        .background(Color(white: 0.08))
+        .background(AppTheme.background)
 }
 
 #Preview("额度 · 多窗口与刷新中") {
@@ -119,15 +105,15 @@ enum PreviewModels {
         name: "附加模型 · 5 小时"
     ))
     return QuotaCard(snapshot: snapshot, isRefreshing: true, lastRefresh: Date(), refresh: {})
-        .frame(width: 380, height: 168)
+        .frame(width: 366, height: 154)
         .padding()
-        .background(Color(white: 0.08))
+        .background(AppTheme.background)
 }
 
 #Preview("弹窗 · 零可见服务商") {
     let preferences = ProviderPreferences(enabledProviders: [], selectedProvider: nil)
     PopoverView(model: PreviewModels.dashboard(preferences: preferences))
-        .frame(width: 404, height: 472)
+        .frame(width: 390, height: 425)
 }
 
 private struct NavBarPreviewHost: View {
@@ -140,9 +126,9 @@ private struct NavBarPreviewHost: View {
             openWindow: openWindow,
             onSelect: { _ in }
         )
-        .frame(width: 380, height: 54)
+        .frame(width: 366, height: 48.5)
         .padding()
-        .background(Color(white: 0.08))
+        .background(Color.black)
     }
 }
 

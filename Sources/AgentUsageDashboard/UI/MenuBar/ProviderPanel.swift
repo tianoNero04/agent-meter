@@ -20,7 +20,7 @@ struct ProviderPanel: View {
     private var removalEdge: Edge { slideEdge == .trailing ? .leading : .trailing }
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 7) {
             ProviderHeroCard(snapshot: snapshot)
             QuotaCard(
                 snapshot: snapshot,
@@ -43,14 +43,14 @@ struct ProviderHeroCard: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ProviderIconTile(provider: snapshot.provider, size: 46, cornerRadius: 14)
-            VStack(alignment: .leading, spacing: 4) {
+            ProviderIconTile(provider: snapshot.provider, size: 44)
+            VStack(alignment: .leading, spacing: 3.5) {
                 Text(snapshot.provider.displayName.uppercased())
-                    .font(.system(size: 17, weight: .semibold))
-                    .tracking(0.5)
+                    .font(.system(size: 16.5, weight: .semibold))
+                    .tracking(0.8)
                     .foregroundStyle(AppTheme.primaryText)
                 Text(heroDetail)
-                    .font(.system(size: 11.5, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(snapshot.errorMessage == nil ? AppTheme.secondaryText : AppTheme.warning)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -59,25 +59,37 @@ struct ProviderHeroCard: View {
             .help(heroDetail)
             .accessibilityLabel(heroDetail)
 
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 5, height: 5)
-                Text(planLabel)
-                    .font(.system(size: 11.5, weight: .semibold))
-                    .foregroundStyle(snapshot.account == nil ? AppTheme.secondaryText : AppTheme.primaryText)
-                    .lineLimit(1)
-                    .frame(maxWidth: 108, alignment: .trailing)
+            VStack(alignment: .trailing, spacing: 3) {
+                Text("订阅")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(AppTheme.tertiaryText)
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(statusColor)
+                        .frame(width: 4.5, height: 4.5)
+                    Text(planLabel)
+                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(snapshot.account == nil ? AppTheme.secondaryText : AppTheme.primaryText)
+                        .lineLimit(1)
+                        .frame(maxWidth: 104, alignment: .trailing)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                        .fill(AppTheme.elevated)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                                .stroke(AppTheme.hairlineBright, lineWidth: 0.75)
+                        )
+                )
+                .help(planLabel)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(Color.white.opacity(0.055), in: Capsule())
-            .overlay(Capsule().stroke(Color.white.opacity(0.10), lineWidth: 0.75))
-            .help(planLabel)
         }
-        .padding(.horizontal, 14)
-        .frame(height: 78)
-        .glassBackground()
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(height: 74)
+        .panelBackground()
     }
 
     private var heroDetail: String {
@@ -133,9 +145,9 @@ struct QuotaCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center, spacing: 8) {
+            HStack(alignment: .center, spacing: 6) {
                 Text("剩余额度")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(AppTheme.primaryText)
                 Spacer(minLength: 4)
 
@@ -144,28 +156,32 @@ struct QuotaCard: View {
                 } else if let lastRefresh {
                     Text(lastRefresh.formatted(date: .omitted, time: .shortened))
                         .font(.system(size: 11))
-                        .foregroundStyle(AppTheme.secondaryText)
+                        .foregroundStyle(AppTheme.tertiaryText)
                         .help("最近刷新：\(lastRefresh.formatted())")
                 }
 
                 Button(action: refresh) {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 4) {
                         if isRefreshing {
                             ProgressView()
                                 .controlSize(.mini)
-                                .frame(width: 10, height: 10)
+                                .frame(width: 9, height: 9)
                         } else {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 10, weight: .bold))
+                            RefreshIconShape()
+                                .fill(AppTheme.accent)
+                                .frame(width: 8.5, height: 8.5)
                         }
                         Text(isRefreshing ? "查询中" : "刷新")
                             .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(AppTheme.accent)
                     }
-                    .foregroundStyle(AppTheme.accent)
-                    .padding(.horizontal, 10)
-                    .frame(height: 26)
-                    .background(AppTheme.accent.opacity(0.09), in: Capsule())
-                    .overlay(Capsule().stroke(AppTheme.accent.opacity(0.25), lineWidth: 0.75))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3.5)
+                    .background(AppTheme.elevated, in: RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                            .stroke(AppTheme.accentBorder, lineWidth: 0.75)
+                    )
                 }
                 .buttonStyle(PressBounceButtonStyle(reduceMotion: reduceMotion))
                 .disabled(isRefreshing)
@@ -173,27 +189,32 @@ struct QuotaCard: View {
                 .help("刷新账号额度")
                 .accessibilityLabel(isRefreshing ? "正在刷新账号额度" : "刷新账号额度")
             }
-            .padding(.horizontal, 14)
-            .frame(height: 40)
+            .padding(.horizontal, 12)
+            .frame(height: 32)
+
+            Rectangle()
+                .fill(AppTheme.hairline)
+                .frame(height: 0.75)
+                .padding(.horizontal, 12)
 
             if snapshot.windows.isEmpty {
                 QuotaEmptyState(snapshot: snapshot)
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 12)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
                     .frame(maxHeight: .infinity)
             } else {
-                VStack(spacing: 5) {
+                VStack(spacing: 6) {
                     ForEach(visibleWindows) { window in
                         RateLimitRow(window: window)
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 10)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
                 .frame(maxHeight: .infinity, alignment: .top)
             }
         }
-        .frame(height: 168, alignment: .top)
-        .glassBackground()
+        .frame(height: 154, alignment: .top)
+        .panelBackground()
         .onChange(of: snapshot.provider) { _ in currentPage = 0 }
         .onChange(of: snapshot.windows.count) { _ in
             currentPage = min(currentPage, max(0, pages.count - 1))
@@ -238,10 +259,10 @@ struct TokenUsageCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text("本机 Token")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(AppTheme.primaryText)
                 Spacer()
                 Text("近 7 日")
@@ -249,25 +270,23 @@ struct TokenUsageCard: View {
                     .foregroundStyle(AppTheme.secondaryText)
             }
 
-            HStack(alignment: .center, spacing: 16) {
-                VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(formatCompactNumber(snapshot.localTokenUsage.total))
-                        .font(.system(size: 25, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 22, weight: .semibold, design: .monospaced))
                         .foregroundStyle(AppTheme.primaryText)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
                         .accessibilityLabel("本机累计 \(snapshot.localTokenUsage.total) Token")
                     if snapshot.localTokenUsage.cachedInput > 0 {
-                        HStack(spacing: 4) {
+                        HStack(spacing: 3) {
                             Text("缓存")
                                 .foregroundStyle(AppTheme.secondaryText)
                             Text("\(Int(round(snapshot.localTokenUsage.cacheHitRate * 100)))%")
                                 .foregroundStyle(AppTheme.accent)
                         }
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(AppTheme.accent.opacity(0.08), in: Capsule())
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1.5)
+                        .background(AppTheme.elevated, in: RoundedRectangle(cornerRadius: 2, style: .continuous))
                     } else if snapshot.localTokenUsage.input > 0 || snapshot.localTokenUsage.output > 0 {
                         HStack(spacing: 3) {
                             Text("IN \(formatCompactNumber(snapshot.localTokenUsage.input))")
@@ -279,40 +298,44 @@ struct TokenUsageCard: View {
                         .lineLimit(1)
                     }
                 }
-                .frame(width: 140, alignment: .leading)
+                .frame(width: 124, alignment: .leading)
+
+                Rectangle()
+                    .fill(AppTheme.hairline)
+                    .frame(width: 0.75, height: 44)
 
                 if buckets.isEmpty {
-                    VStack(spacing: 4) {
+                    VStack(spacing: 3) {
                         Image(systemName: "chart.xyaxis.line")
-                            .font(.system(size: 15))
+                            .font(.system(size: 14))
                             .foregroundStyle(AppTheme.tertiaryText)
                         Text("暂无本机趋势")
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(AppTheme.secondaryText)
+                            .foregroundStyle(AppTheme.tertiaryText)
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(height: 52)
+                    .frame(height: 50)
                 } else {
                     Chart(buckets) { bucket in
                         LineMark(x: .value("日期", bucket.startDate, unit: .day), y: .value("Token", bucket.tokens))
                             .foregroundStyle(AppTheme.accent)
-                            .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                            .lineStyle(StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
                         PointMark(x: .value("日期", bucket.startDate, unit: .day), y: .value("Token", bucket.tokens))
                             .foregroundStyle(AppTheme.primaryText)
-                            .symbolSize(16)
+                            .symbolSize(18)
                     }
                     .chartXAxis(.hidden)
                     .chartYAxis(.hidden)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 52)
+                    .frame(height: 50)
                     .accessibilityLabel(chartSummary)
                 }
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .frame(height: 104)
-        .glassBackground()
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(height: 98)
+        .panelBackground()
     }
 }
 
@@ -320,9 +343,9 @@ struct QuotaEmptyState: View {
     let snapshot: ProviderSnapshot
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("账号额度")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(AppTheme.primaryText)
@@ -334,13 +357,17 @@ struct QuotaEmptyState: View {
                 Text(statusLabel)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(snapshot.errorMessage == nil ? AppTheme.secondaryText : AppTheme.warning)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.white.opacity(0.055), in: Capsule())
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2.5)
+                    .background(AppTheme.elevated, in: RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous))
             }
-            Capsule()
-                .fill(Color.white.opacity(0.07))
-                .frame(height: 6)
+            HStack(spacing: 2) {
+                ForEach(0..<20, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: 0.5)
+                        .fill(Color.white.opacity(0.05))
+                        .frame(maxWidth: .infinity, maxHeight: 6)
+                }
+            }
             Text(description)
                 .font(.system(size: 11))
                 .foregroundStyle(snapshot.errorMessage == nil ? AppTheme.secondaryText : AppTheme.warning)
@@ -348,6 +375,15 @@ struct QuotaEmptyState: View {
                 .help(description)
                 .accessibilityLabel(description)
         }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                .fill(AppTheme.background.opacity(0.88))
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
+                        .stroke(AppTheme.hairline, lineWidth: 0.75)
+                )
+        )
     }
 
     private var statusTitle: String {

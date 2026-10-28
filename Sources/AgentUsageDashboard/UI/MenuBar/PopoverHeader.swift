@@ -1,21 +1,27 @@
 import SwiftUI
 
+/// 杂志报头刊头品牌组件（Masthead Branding）：呈现严谨出版物风格的品牌标题与系统期号
 struct PopoverHeader: View {
     let openSettings: OpenWindowAction
 
     var body: some View {
         Button {
+            // 点击 Logo 启动统一控制中心总窗口
             DockPolicyManager.shared.windowWillOpen("master")
             NSApp.activate(ignoringOtherApps: true)
             openSettings(id: "master")
+            // 打开主页面后，自动关闭当前展开的菜单栏小窗
             MenuBarDismissManager.shared.dismiss()
         } label: {
             HStack(spacing: 8) {
+                // 极简白色几何 Logo
                 AgentMeterLogo()
-                    .frame(width: 17, height: 17)
+                    .frame(width: 18, height: 18)
+
+                // 报头重字重大写品牌标
                 Text("AGENT METER")
-                    .font(.system(size: 11, weight: .semibold))
-                    .tracking(1.0)
+                    .font(.system(size: 10.5, weight: .semibold, design: .default))
+                    .tracking(1.4)
                     .foregroundStyle(AppTheme.primaryText)
             }
             .contentShape(Rectangle())

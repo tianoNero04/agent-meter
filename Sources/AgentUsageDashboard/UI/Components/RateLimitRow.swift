@@ -1,49 +1,48 @@
 import SwiftUI
 
+/// 紧凑额度行：窗口、剩余百分比与重置时间共用一条阅读路径。
 struct RateLimitRow: View {
     let window: RateLimitWindow
     var accent: Color = AppTheme.accent
 
     var body: some View {
-        VStack(spacing: 5) {
-            HStack(spacing: 10) {
-                QuotaRowIcon(windowMinutes: window.windowMinutes)
-                Text(window.label)
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundStyle(AppTheme.primaryText)
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-                Text("\(window.remainingPercent, specifier: "%.0f")%")
-                    .font(.system(size: 20, weight: .semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(AppTheme.primaryText)
+        HStack(spacing: 10) {
+            QuotaRowIcon(windowMinutes: window.windowMinutes)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(window.label)
+                        .font(.system(size: 12, weight: .medium))
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
+                    Text("\(window.remainingPercent, specifier: "%.0f")%")
+                        .font(.system(size: 17, weight: .semibold))
+                        .monospacedDigit()
+                }
+                .foregroundStyle(AppTheme.primaryText)
+                SwissSegmentedGauge(remainingPercent: window.remainingPercent, accent: accent)
             }
-            HStack(spacing: 10) {
-                QuotaGauge(remainingPercent: window.remainingPercent, accent: accent)
-                if let resetsAt = window.resetsAt {
-                    HStack(spacing: 4) {
-                        Text("重置")
-                            .foregroundStyle(AppTheme.secondaryText)
-                        if window.windowMinutes == 300 {
-                            TimelineView(.periodic(from: .now, by: 60)) { context in
-                                Text(countdownText(to: resetsAt, now: context.date))
-                                    .foregroundStyle(AppTheme.primaryText)
-                                    .monospacedDigit()
-                            }
-                        } else {
-                            Text(resetDateText(from: resetsAt))
+            if let resetsAt = window.resetsAt {
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(window.windowMinutes == 300 ? "距离重置" : "重置时间")
+                        .foregroundStyle(AppTheme.secondaryText)
+                    if window.windowMinutes == 300 {
+                        TimelineView(.periodic(from: .now, by: 60)) { context in
+                            Text(countdownText(to: resetsAt, now: context.date))
                                 .foregroundStyle(AppTheme.primaryText)
                                 .monospacedDigit()
                         }
+                    } else {
+                        Text(resetDateText(from: resetsAt))
+                            .foregroundStyle(AppTheme.primaryText)
+                            .monospacedDigit()
                     }
-                    .font(.system(size: 11))
-                    .lineLimit(1)
-                    .fixedSize()
                 }
+                .font(.system(size: 11))
+                .lineLimit(1)
+                .frame(width: 92, alignment: .trailing)
             }
-            .padding(.leading, 45)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
         .accessibilityElement(children: .combine)
     }
 
@@ -62,20 +61,34 @@ struct RateLimitRow: View {
     }
 }
 
-struct QuotaGauge: View {
+struct SwissSegmentedGauge: View {
     let remainingPercent: Double
     var accent: Color = AppTheme.accent
 
+    private let totalSegments: Int = 20
+
     var body: some View {
         GeometryReader { proxy in
-            Capsule()
-                .fill(Color.white.opacity(0.09))
-                .overlay(alignment: .leading) {
-                    Capsule()
-                        .fill(accent)
-                        .frame(width: proxy.size.width * min(max(remainingPercent / 100, 0), 1))
+            let availableWidth = proxy.size.width
+            let spacing: CGFloat = 1.5
+            let segmentWidth = max(0, (availableWidth - CGFloat(totalSegments - 1) * spacing) / CGFloat(totalSegments))
+            let filledCount = Int(round((remainingPercent / 100.0) * Double(totalSegments)))
+
+            HStack(spacing: spacing) {
+                ForEach(0..<totalSegments, id: \.self) { index in
+                    let isFilled = index < filledCount
+                    RoundedRectangle(cornerRadius: 0.5, style: .continuous)
+                        .fill(
+                            isFilled
+                                ? accent
+                                : Color.white.opacity(0.08)
+                        )
+                        .frame(width: segmentWidth, height: 9.0)
+
                 }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(height: 6)
+        .frame(height: 9.0)
     }
 }

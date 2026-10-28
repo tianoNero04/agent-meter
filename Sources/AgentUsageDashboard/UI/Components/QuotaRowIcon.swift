@@ -42,11 +42,11 @@ struct QuotaRowIcon: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(Color.white.opacity(0.05))
+                .fill(AppTheme.elevated)
                 .overlay {
                     Circle()
                         .stroke(
-                            Color.white.opacity(0.12),
+                            AppTheme.hairlineBright,
                             lineWidth: spec.ringBorderWidth
                         )
                 }
