@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 瑞士国际主义：中性黑灰、绿色功能强调、纯色平面构成。
+/// 中性黑灰与绿色功能强调色，供玻璃弹窗和纯色控制中心共用。
 enum AppTheme {
     static let background = Color(white: 17.0 / 255) // #111111
     static let surface = Color(white: 25.0 / 255) // #191919
