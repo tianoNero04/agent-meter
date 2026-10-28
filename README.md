@@ -63,10 +63,10 @@ open Build/AgentUsageDashboard.app
 
 ### 3. 开始查看
 
-1. 在菜单弹窗顶部切换服务商，查看账号额度与本机趋势。
+1. 在菜单弹窗顶部切换服务商，查看账号额度与本机趋势；Token 卡片统一使用当前 Mac 的本机累计口径。
 2. 点击弹窗 Logo 或控制中心按钮，打开完整统计与设置窗口。
-3. 在服务商设置中选择需要展示的工具。
-4. 在其他设备使用后，回到本机点击刷新，重新查询账号额度。
+3. 在服务商设置中选择需要展示的工具。显示开关由你控制，客户端安装检测只用于诊断；没有 CLI 但存在可用登录凭据时，仍可查询账号额度。
+4. 在其他设备使用后，回到本机点击刷新，重新查询账号额度。超过两个额度窗口时，使用额度卡片上的前后按钮分页查看。
 
 短时间反复打开弹窗会复用缓存，账号自动查询设有 30 秒冷却；界面显示的内容不保证每次打开都来自一次新的网络请求。
 
@@ -96,7 +96,7 @@ Token 统计页目前汇总 Codex 和 Kimi Code：
 
 ### 模型价格
 
-价格目录可从 models.dev 同步，支持按服务商筛选；Gemini、Gemma 归类为 Google。修改费率后，仅与同步基准不同的条目显示恢复按钮。再次同步会更新基准，并保留仍有差异的手动调整。
+价格目录可从 models.dev 同步，支持按服务商筛选；Gemini、Gemma 归类为 Google。修改费率后，仅与同步基准不同的条目显示恢复按钮。再次同步会更新基准并保留仍有差异的手动调整；即使模型已从上游目录移除，手动费率也不会被静默删除。费率单元格支持键盘编辑，Return 提交、Escape 取消，无效或负数会显示错误。
 
 模型费率不是套餐额度：价格列表完整，不代表账号接口能够返回所有模型的额度。
 
@@ -112,7 +112,7 @@ Agent Meter 在本机解析用量记录，不将提示词、回复、代码正�
 | --- | --- |
 | `~/.codex/auth.json`、系统钥匙串中的相关凭据 | Codex 账号查询 |
 | `~/.codex/sessions` | Codex 本机用量 |
-| `~/.kimi-code/credentials/kimi-code.json`、系统钥匙串中的相关凭据 | Kimi Code 账号查询 |
+| `~/.kimi-code/credentials/kimi-code.json` | Kimi Code 账号查询 |
 | `~/.kimi-code/sessions` | Kimi Code 本机用量 |
 | `~/.antigravity_tools/accounts.json`、`accounts/`、`~/.gemini/` 中的兼容凭据及相关钥匙串项 | Antigravity 账号查询与缓存 |
 | `~/.antigravity_tools/token_stats.db` | Antigravity 本机统计 |

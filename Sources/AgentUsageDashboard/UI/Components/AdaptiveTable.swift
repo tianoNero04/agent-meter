@@ -15,7 +15,7 @@ struct AdaptiveTable<Content: View>: View {
             content.frame(minWidth: minimumWidth)
             VStack(alignment: .leading, spacing: 8) {
                 Label("横向滚动查看完整表格", systemImage: "arrow.left.and.right")
-                    .font(.system(size: 10))
+                    .font(.system(size: 11))
                     .foregroundStyle(AppTheme.secondaryText)
                     .padding(.horizontal, 12)
                 ScrollView(.horizontal) { content.frame(width: minimumWidth) }

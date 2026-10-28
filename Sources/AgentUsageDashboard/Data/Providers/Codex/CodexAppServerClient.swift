@@ -22,20 +22,51 @@ enum AppServerError: LocalizedError {
     }
 }
 
+private final class CodexAppServerProcessController: @unchecked Sendable {
+    private let lock = NSLock()
+    private var process: Process?
+    private var isCancelled = false
+
+    func register(_ process: Process) {
+        lock.lock()
+        self.process = process
+        let shouldTerminate = isCancelled
+        lock.unlock()
+        if shouldTerminate { process.terminate() }
+    }
+
+    func terminate() {
+        lock.lock()
+        isCancelled = true
+        let process = self.process
+        lock.unlock()
+        if let process, process.isRunning { process.terminate() }
+    }
+}
+
 struct CodexAppServerClient {
     var executableURL: URL? = CodexAppServerClient.findCodexExecutable()
 
     func fetch() async throws -> CodexAccountData {
         guard let executableURL else { throw AppServerError.executableNotFound }
+        try Task.checkCancellation()
+        let controller = CodexAppServerProcessController()
 
-        let text = try await Task.detached(priority: .utility) {
-            try Self.runProcess(executableURL: executableURL)
-        }.value
-        return try Self.parse(text)
+        return try await withTaskCancellationHandler {
+            let text = try await Task.detached(priority: .utility) {
+                try Self.runProcess(executableURL: executableURL, controller: controller)
+            }.value
+            try Task.checkCancellation()
+            return try Self.parse(text)
+        } onCancel: {
+            controller.terminate()
+        }
     }
 
-    private static func runProcess(executableURL: URL) throws -> String {
-
+    private static func runProcess(
+        executableURL: URL,
+        controller: CodexAppServerProcessController
+    ) throws -> String {
         let input = Pipe()
         let output = Pipe()
         let process = Process()
@@ -46,6 +77,7 @@ struct CodexAppServerClient {
         process.standardError = FileHandle.nullDevice
 
         try process.run()
+        controller.register(process)
 
         let timeoutTimer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
         timeoutTimer.schedule(deadline: .now() + .seconds(8))

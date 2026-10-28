@@ -24,11 +24,20 @@ struct JSONSnapshotRepository: SnapshotRepository {
 
     func load() -> PersistedDashboard? {
         guard let data = try? Data(contentsOf: fileURL),
-              var decoded = try? decoder.decode(PersistedDashboard.self, from: data) else { return nil }
-        // 本地分桶只服务近 7 天曲线：加载时裁掉 30 天外或未来时间的异常桶，
-        // 避免异常数据随每次落盘反复参与编码、文件越滚越大。
-        let lowerBound = Date().addingTimeInterval(-30 * 24 * 60 * 60)
-        let upperBound = Date().addingTimeInterval(24 * 60 * 60)
+              let decoded = try? decoder.decode(PersistedDashboard.self, from: data) else { return nil }
+        return pruned(decoded)
+    }
+
+    func save(current: DashboardSnapshot, history: [DashboardSnapshot]) {
+        let persisted = pruned(PersistedDashboard(current: current, history: history))
+        guard let data = try? encoder.encode(persisted) else { return }
+        try? data.write(to: fileURL, options: .atomic)
+    }
+
+    private func pruned(_ persisted: PersistedDashboard) -> PersistedDashboard {
+        let now = Date()
+        let lowerBound = now.addingTimeInterval(-30 * 24 * 60 * 60)
+        let upperBound = now.addingTimeInterval(24 * 60 * 60)
         func prune(_ snapshot: inout DashboardSnapshot) {
             for index in snapshot.providers.indices {
                 snapshot.providers[index].localDailyBuckets = snapshot.providers[index].localDailyBuckets.filter {
@@ -36,18 +45,13 @@ struct JSONSnapshotRepository: SnapshotRepository {
                 }
             }
         }
-        prune(&decoded.current)
-        for index in decoded.history.indices { prune(&decoded.history[index]) }
-        return decoded
-    }
 
-    func save(current: DashboardSnapshot, history: [DashboardSnapshot]) {
-        let cutoff = Date().addingTimeInterval(-30 * 24 * 60 * 60)
-        let recent = history
-            .filter { $0.collectedAt >= cutoff }
+        var result = persisted
+        result.history = result.history
+            .filter { $0.collectedAt >= lowerBound }
             .sorted { $0.collectedAt < $1.collectedAt }
-        let persisted = PersistedDashboard(current: current, history: recent)
-        guard let data = try? encoder.encode(persisted) else { return }
-        try? data.write(to: fileURL, options: .atomic)
+        prune(&result.current)
+        for index in result.history.indices { prune(&result.history[index]) }
+        return result
     }
 }

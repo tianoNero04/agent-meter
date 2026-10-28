@@ -29,7 +29,27 @@ struct PromptSavingsTab: View {
                     }
 
                     Spacer()
+                    if model.navigation.visibleProviders.count > 1 {
+                        Picker("服务商", selection: Binding(
+                            get: { activeProvider },
+                            set: { model.selectProvider($0) }
+                        )) {
+                            ForEach(model.navigation.visibleProviders, id: \.self) {
+                                Text($0.displayName).tag($0)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .fixedSize()
+                    } else {
+                        Text(activeProvider.displayName)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(AppTheme.secondaryText)
+                    }
                 }
+
+                Text("\(activeProvider.displayName) · 本机累计观测")
+                    .font(.system(size: 11))
+                    .foregroundStyle(AppTheme.secondaryText)
 
                 // 核心省钱高亮看板
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 14)], spacing: 14) {
@@ -179,10 +199,12 @@ struct PromptSavingsTab: View {
         }
     }
 
-    /// 当前所有可观测模型的列表
+    private var activeProvider: Provider {
+        model.navigation.activeProvider
+    }
+
     private var modelUsageList: [ModelUsage] {
-        let currentProvider = model.navigation.selectedProvider ?? .codex
-        return model.snapshot(for: currentProvider).localModels
+        model.snapshot(for: activeProvider).localModels
     }
 
     /// 累计节省金额

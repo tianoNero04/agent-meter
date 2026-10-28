@@ -57,6 +57,7 @@ struct KimiDirectApiClient {
                 creds = refreshed
                 saveCredentialsQuietly(creds)
             }
+            try Task.checkCancellation()
         }
 
         // 3. 发送额度查询请求
@@ -107,6 +108,7 @@ struct KimiDirectApiClient {
 
         // 顺带查询 /me 获取用户昵称（若失败不阻塞额度展示）
         let nickname = await fetchNicknameQuietly(accessToken: accessToken)
+        try Task.checkCancellation()
 
         return try Self.parseUsagesResponse(data: data, nickname: nickname)
     }
@@ -290,7 +292,7 @@ struct KimiDirectApiClient {
            let limits = json["limits"] as? [[String: Any]] {
             for item in limits {
                 let duration = JSONSupport.int(JSONSupport.value(item, path: ["window", "duration"]))
-                if duration == 300 || !windows.contains(where: { $0.id == "kimi.primary" }) {
+                if duration == 300 {
                     if let detail = item["detail"] as? [String: Any] {
                         let limit = JSONSupport.double(detail["limit"]) ?? 100.0
                         let usedPercent: Double = {
@@ -339,6 +341,7 @@ struct KimiDirectApiClient {
             ))
         }
 
+        guard !windows.isEmpty else { throw KimiDirectApiError.invalidResponseData }
         return KimiAccountData(account: account, windows: windows)
     }
 }

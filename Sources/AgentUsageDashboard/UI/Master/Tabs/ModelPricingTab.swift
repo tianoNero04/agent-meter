@@ -28,10 +28,9 @@ struct ModelPricingTab: View {
             ? pricings
             : pricings.filter { PricingProviderClassifier.providerName(for: $0.modelName) == selectedProvider }
 
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 14) {
                 Text("模型费率与成本换算")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(AppTheme.primaryText)
 
                 // 主数据表格
@@ -130,54 +129,55 @@ struct ModelPricingTab: View {
                     Divider()
                         .background(Color.white.opacity(0.08))
 
-                    AdaptiveTable(minimumWidth: 720) {
-                        VStack(spacing: 0) {
-                            // 表头字段列
-                            HStack(spacing: 10) {
-                                Text("模型名称 / MODEL")
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                Text("服务商")
-                                    .frame(width: 78, alignment: .leading)
-                                Text("输入 (1M)")
-                                    .frame(width: 76, alignment: .center)
-                                Text("缓存 (1M)")
-                                    .frame(width: 76, alignment: .center)
-                                Text("输出 (1M)")
-                                    .frame(width: 76, alignment: .center)
-                                Text("")
-                                    .frame(width: 24, alignment: .center)
-                            }
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(AppTheme.secondaryText)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 9)
-                            .background(Color.white.opacity(0.015))
-
-                            Divider()
-                                .background(Color.white.opacity(0.08))
-
+                    ScrollView(.vertical, showsIndicators: false) {
+                        AdaptiveTable(minimumWidth: 720) {
                             VStack(spacing: 0) {
-                                ForEach(visiblePricings) { pricingItem in
-                                    tableRow(for: pricingItem)
-                                    if pricingItem.id != visiblePricings.last?.id {
-                                        Divider()
-                                            .background(Color.white.opacity(0.05))
-                                    }
+                                HStack(spacing: 10) {
+                                    Text("模型名称")
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    Text("服务商")
+                                        .frame(width: 78, alignment: .leading)
+                                    Text("输入 (1M)")
+                                        .frame(width: 76, alignment: .center)
+                                    Text("缓存 (1M)")
+                                        .frame(width: 76, alignment: .center)
+                                    Text("输出 (1M)")
+                                        .frame(width: 76, alignment: .center)
+                                    Text("")
+                                        .frame(width: 24, alignment: .center)
                                 }
-                                if visiblePricings.isEmpty {
-                                    Text("没有该服务商的模型")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(AppTheme.tertiaryText)
-                                        .frame(maxWidth: .infinity, minHeight: 72)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(AppTheme.secondaryText)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 9)
+                                .background(Color.white.opacity(0.015))
+
+                                Divider()
+                                    .background(Color.white.opacity(0.08))
+
+                                VStack(spacing: 0) {
+                                    ForEach(visiblePricings) { pricingItem in
+                                        tableRow(for: pricingItem)
+                                        if pricingItem.id != visiblePricings.last?.id {
+                                            Divider()
+                                                .background(Color.white.opacity(0.05))
+                                        }
+                                    }
+                                    if visiblePricings.isEmpty {
+                                        Text("没有该服务商的模型")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(AppTheme.tertiaryText)
+                                            .frame(maxWidth: .infinity, minHeight: 72)
+                                    }
                                 }
                             }
                         }
                     }
                 }
                 .background(AppTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius, style: .continuous)
                         .stroke(Color.white.opacity(0.08), lineWidth: 1)
                 )
 
@@ -186,7 +186,6 @@ struct ModelPricingTab: View {
             .padding(.top, 24)
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
-        }
         .onAppear {
             preferences = store.load()
         }
@@ -213,28 +212,28 @@ struct ModelPricingTab: View {
                 .foregroundStyle(AppTheme.secondaryText)
                 .frame(width: 78, alignment: .leading)
 
-            // 3. 输入单价药丸单元格
             InlineEditablePillCell(
                 value: item.inputPerMillion,
                 symbol: item.baseCurrency.symbol,
+                label: "\(item.modelName) 输入单价",
                 width: 76
             ) { newPrice in
                 updatePrice(for: item, input: newPrice)
             }
 
-            // 4. 缓存读取单价药丸单元格
             InlineEditablePillCell(
                 value: item.cacheReadPerMillion,
                 symbol: item.baseCurrency.symbol,
+                label: "\(item.modelName) 缓存单价",
                 width: 76
             ) { newPrice in
                 updatePrice(for: item, cache: newPrice)
             }
 
-            // 5. 输出单价药丸单元格
             InlineEditablePillCell(
                 value: item.outputPerMillion,
                 symbol: item.baseCurrency.symbol,
+                label: "\(item.modelName) 输出单价",
                 width: 76
             ) { newPrice in
                 updatePrice(for: item, output: newPrice)
@@ -385,68 +384,103 @@ struct ModelPricingTab: View {
     }
 }
 
-/// 仿照 ReactBits Pro data-table-3 的行内可编辑深色药丸单元格组件
+enum PriceInputValidation {
+    static func parse(_ text: String) -> Double? {
+        guard let value = Double(text.trimmingCharacters(in: .whitespacesAndNewlines)),
+              value.isFinite, value >= 0 else { return nil }
+        return value
+    }
+}
+
 struct InlineEditablePillCell: View {
     let value: Double
     let symbol: String
+    let label: String
     var width: CGFloat = 76
-
     var onCommit: (Double) -> Void
 
     @State private var isEditing = false
     @State private var textInput = ""
+    @State private var validationError: String?
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        ZStack {
-            if isEditing {
-                TextField("", text: $textInput)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 11.5, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.white)
-                    .multilineTextAlignment(.center)
-                    .focused($isFocused)
-                    .onSubmit {
-                        commitChange()
-                    }
-                    .onChange(of: isFocused) { focused in
-                        if !focused {
-                            commitChange()
-                        }
-                    }
-            } else {
-                HStack(spacing: 2) {
-                    Text(symbol)
-                        .font(.system(size: 11, weight: .regular))
-                        .foregroundStyle(AppTheme.secondaryText)
-
-                    Text(formattedValue(value))
+        VStack(spacing: 2) {
+            Group {
+                if isEditing {
+                    TextField(label, text: $textInput)
+                        .textFieldStyle(.plain)
                         .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(AppTheme.primaryText)
+                        .foregroundStyle(validationError == nil ? AppTheme.primaryText : AppTheme.warning)
+                        .multilineTextAlignment(.center)
+                        .focused($isFocused)
+                        .onSubmit(commitChange)
+                        .onExitCommand(perform: cancelEditing)
+                        .onChange(of: isFocused) { focused in
+                            if !focused { commitChange() }
+                        }
+                } else {
+                    Button(action: beginEditing) {
+                        HStack(spacing: 2) {
+                            Text(symbol)
+                                .font(.system(size: 11))
+                                .foregroundStyle(AppTheme.secondaryText)
+                            Text(formattedValue(value))
+                                .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(AppTheme.primaryText)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
             }
+            .frame(width: width, height: 26)
+            .background(
+                RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius, style: .continuous)
+                    .fill(isEditing ? AppTheme.elevated : AppTheme.surface)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius, style: .continuous)
+                    .stroke(validationError == nil ? (isEditing ? AppTheme.accent : Color.white.opacity(0.06)) : AppTheme.warning, lineWidth: 1)
+            )
+
+            if let validationError {
+                Text(validationError)
+                    .font(.system(size: 11))
+                    .foregroundStyle(AppTheme.warning)
+                    .lineLimit(1)
+            }
         }
-        .frame(width: width, height: 26)
-        .background(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(isEditing ? AppTheme.elevated : AppTheme.surface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .stroke(isEditing ? AppTheme.accent : Color.white.opacity(0.06), lineWidth: 1)
-        )
-        .contentShape(Rectangle())
-        .onTapGesture {
-            textInput = String(format: "%.3f", value).replacingOccurrences(of: "0+$", with: "", options: .regularExpression).replacingOccurrences(of: "\\.$", with: "", options: .regularExpression)
-            isEditing = true
-            isFocused = true
-        }
+        .frame(width: width)
+        .accessibilityLabel("\(label)，每百万 Token，\(symbol)\(formattedValue(value))")
+        .help(validationError ?? "\(label)，回车提交，Escape 取消")
+    }
+
+    private func beginEditing() {
+        textInput = String(format: "%.3f", value)
+            .replacingOccurrences(of: "0+$", with: "", options: .regularExpression)
+            .replacingOccurrences(of: "\\.$", with: "", options: .regularExpression)
+        validationError = nil
+        isEditing = true
+        isFocused = true
     }
 
     private func commitChange() {
-        if let parsed = Double(textInput) {
-            onCommit(parsed)
+        guard isEditing else { return }
+        guard let parsed = PriceInputValidation.parse(textInput) else {
+            validationError = "无效费率"
+            isFocused = true
+            return
         }
+        onCommit(parsed)
+        validationError = nil
+        isEditing = false
+        isFocused = false
+    }
+
+    private func cancelEditing() {
+        validationError = nil
         isEditing = false
         isFocused = false
     }

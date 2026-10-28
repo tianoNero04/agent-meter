@@ -27,7 +27,8 @@ struct PopoverHeader: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("打开设置 (Settings)")
+        .help("打开控制中心")
+        .accessibilityLabel("打开 Agent Meter 控制中心")
     }
 }
 

@@ -35,10 +35,13 @@ struct MonitoringDashboardView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(AppTheme.secondaryText)
 
-                HStack(alignment: .top, spacing: 0) {
-                    metric("范围内 Token", value: formatCompactNumber(summary.totalTokens), detail: summary.tokensDeltaRatio.map { String(format: "最近一时段环比 %+.1f%%", $0 * 100) } ?? "暂无可比较的上一时段")
-                    metric("缓存命中率（估算）", value: String(format: "%.1f%%", summary.cacheHitRate * 100), detail: "缓存折算节省 \(summary.cacheSavingsDisplay)")
-                    metric("API 费率折算", value: String(format: "%@%.2f", pricing.targetCurrency.symbol, summary.totalEstimatedCost), detail: "估算金额，非实际账单")
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 0) {
+                        summaryMetrics(summary)
+                    }
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 12)], spacing: 12) {
+                        summaryMetrics(summary)
+                    }
                 }
                 .panelBackground()
 
@@ -122,6 +125,13 @@ struct MonitoringDashboardView: View {
         .onChange(of: granularity) { _ in selectedBucketID = nil }
     }
 
+    @ViewBuilder
+    private func summaryMetrics(_ summary: MonitoringOverviewSummary) -> some View {
+        metric("范围内 Token", value: formatCompactNumber(summary.totalTokens), detail: summary.tokensDeltaRatio.map { String(format: "最近一时段环比 %+.1f%%", $0 * 100) } ?? "暂无可比较的上一时段")
+        metric("缓存命中率（估算）", value: String(format: "%.1f%%", summary.cacheHitRate * 100), detail: "缓存折算节省 \(summary.cacheSavingsDisplay)")
+        metric("API 费率折算", value: String(format: "%@%.2f", pricing.targetCurrency.symbol, summary.totalEstimatedCost), detail: "估算金额，非实际账单")
+    }
+
     private func metric(_ title: String, value: String, detail: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.system(size: 12)).foregroundStyle(AppTheme.secondaryText)
@@ -129,7 +139,6 @@ struct MonitoringDashboardView: View {
                 .font(.system(size: 24, weight: .semibold))
                 .monospacedDigit()
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
             Text(detail).font(.system(size: 11)).foregroundStyle(AppTheme.secondaryText)
         }
         .frame(maxWidth: .infinity, minHeight: 86, alignment: .leading)

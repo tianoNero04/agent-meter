@@ -32,7 +32,8 @@ final class DashboardModelTests: XCTestCase {
             adapters: adapters,
             repository: repository,
             settingsStore: settingsStore,
-            watcherFactory: { _ in watchers }
+            watcherFactory: { _ in watchers },
+            environmentInspector: FakeEnvironmentInspector()
         )
         return Fixture(
             model: model,

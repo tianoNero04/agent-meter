@@ -22,57 +22,19 @@ final class LocalEnvironmentInspectorTests: XCTestCase {
         XCTAssertEqual(inspector.compactPath(systemPath), systemPath)
     }
 
-    func testInspectAllToolsReturnsOrderedItems() async throws {
-        let tools = await inspector.inspectAllTools()
+    func testSortToolsUsesStableKnownOrderWithoutScanningRealEnvironment() {
+        let codex = LocalToolEnvironment(
+            id: "codex", name: "Codex", vendor: "OpenAI", iconName: "terminal",
+            isInstalled: false, version: nil, locationPath: nil, statusDescription: "未检测到"
+        )
+        let kimi = LocalToolEnvironment(
+            id: "kimi", name: "Kimi", vendor: "Moonshot AI", iconName: "sparkles",
+            isInstalled: false, version: nil, locationPath: nil, statusDescription: "未检测到"
+        )
 
-        // 验证返回的 12 大主流工具数量与预设排序
-        let expectedIds = [
-            "codex", "kimi", "antigravity", "claude", "cursor", "vscode",
-            "grok", "opencode", "openclaw", "hermes", "pi", "ollama"
-        ]
-        XCTAssertEqual(tools.map(\.id), expectedIds)
+        let tools = LocalEnvironmentInspector.sortTools([kimi, codex])
 
-        for tool in tools {
-            XCTAssertFalse(tool.name.isEmpty)
-            XCTAssertFalse(tool.vendor.isEmpty)
-            XCTAssertFalse(tool.iconName.isEmpty)
-            XCTAssertFalse(tool.statusDescription.isEmpty)
-        }
-
-        // 验证 VS Code Copilot 专属名称与厂商映射
-        let vscode = try XCTUnwrap(tools.first { $0.id == "vscode" })
-        XCTAssertEqual(vscode.name, "VS Code Copilot")
-        XCTAssertEqual(vscode.vendor, "GitHub / Microsoft")
-
-        // 验证 Grok Build 属性
-        let grok = try XCTUnwrap(tools.first { $0.id == "grok" })
-        XCTAssertEqual(grok.name, "Grok Build")
-        XCTAssertEqual(grok.vendor, "xAI")
-        XCTAssertEqual(grok.iconName, "bolt.fill")
-
-        // 验证 OpenCode 属性
-        let opencode = try XCTUnwrap(tools.first { $0.id == "opencode" })
-        XCTAssertEqual(opencode.name, "OpenCode")
-        XCTAssertEqual(opencode.vendor, "OpenCode AI")
-        XCTAssertEqual(opencode.iconName, "curlybraces")
-
-        // 验证 OpenClaw 属性
-        let openclaw = try XCTUnwrap(tools.first { $0.id == "openclaw" })
-        XCTAssertEqual(openclaw.name, "OpenClaw")
-        XCTAssertEqual(openclaw.vendor, "OpenClaw")
-        XCTAssertEqual(openclaw.iconName, "wrench.and.screwdriver.fill")
-
-        // 验证 Hermes 属性
-        let hermes = try XCTUnwrap(tools.first { $0.id == "hermes" })
-        XCTAssertEqual(hermes.name, "Hermes")
-        XCTAssertEqual(hermes.vendor, "Nous Research")
-        XCTAssertEqual(hermes.iconName, "paperplane.fill")
-
-        // 验证 Pi 属性
-        let pi = try XCTUnwrap(tools.first { $0.id == "pi" })
-        XCTAssertEqual(pi.name, "Pi")
-        XCTAssertEqual(pi.vendor, "Inflection / Pi Agent")
-        XCTAssertEqual(pi.iconName, "circle.hexagongrid.fill")
+        XCTAssertEqual(tools.map(\.id), ["codex", "kimi"])
     }
 
     // 验证网络诊断端点字典完整覆盖所有 12 大工具链

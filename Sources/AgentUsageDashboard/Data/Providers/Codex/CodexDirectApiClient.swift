@@ -203,6 +203,7 @@ struct CodexDirectApiClient {
             }
         }
 
+        guard !windows.isEmpty else { throw CodexDirectApiError.invalidResponseData }
         return CodexAccountData(account: account, windows: windows, usage: nil)
     }
 

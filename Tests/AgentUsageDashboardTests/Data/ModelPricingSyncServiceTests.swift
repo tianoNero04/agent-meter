@@ -111,6 +111,12 @@ final class ModelPricingSyncServiceTests: XCTestCase {
             cacheReadPerMillion: 0.02,
             outputPerMillion: 1.2
         )
+        store.prefs.customOverrides["stale-model"] = ModelPricing(
+            modelName: "stale-model",
+            inputPerMillion: 2,
+            cacheReadPerMillion: 0.4,
+            outputPerMillion: 6
+        )
 
         // 构造自定义 URLProtocol 支持模拟 HTTP 响应
         let config = URLSessionConfiguration.ephemeral
@@ -139,11 +145,12 @@ final class ModelPricingSyncServiceTests: XCTestCase {
         XCTAssertEqual(store.prefs.syncedPricings["gpt-5.6-luna"]?.inputPerMillion, 0.2)
         XCTAssertNil(store.prefs.syncedPricings["stale-model"])
         XCTAssertEqual(store.prefs.customOverrides["gpt-5.6-luna"]?.inputPerMillion, 0.5)
+        XCTAssertEqual(store.prefs.customOverrides["stale-model"]?.inputPerMillion, 2)
     }
 }
 
 /// 专用于单元测试的轻量 URLProtocol 模拟桩
-final class MockURLProtocol: URLProtocol, @unchecked Sendable {
+final class MockURLProtocol: URLProtocol {
     nonisolated(unsafe) static var stubResponseData: Data?
     nonisolated(unsafe) static var stubStatusCode: Int = 200
 

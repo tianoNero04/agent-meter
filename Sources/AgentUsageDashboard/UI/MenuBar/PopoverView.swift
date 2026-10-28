@@ -11,6 +11,7 @@ struct PopoverView: View {
     @Environment(\.openWindow) private var openWindow
     @State private var selectedSection: PopoverSection = .provider(.codex)
     @State private var slideEdge: Edge = .trailing
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -28,16 +29,22 @@ struct PopoverView: View {
                     .fill(AppTheme.hairline)
                     .frame(height: 0.75)
 
-                // 下方三大结构化网格模块面板
-                ProviderPanel(
-                    snapshot: model.snapshot(for: selectedProvider),
-                    // 手动点击校准时无视冷却，强制发起远端查询
-                    refresh: { model.refreshAccountOnPanelOpen(force: true) },
-                    slideEdge: slideEdge
-                )
-                .padding(.horizontal, 12)
-                .padding(.top, 9)
-                .padding(.bottom, 6)
+                if model.navigation.visibleProviders.isEmpty {
+                    PopoverProvidersEmptyState()
+                        .padding(12)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ProviderPanel(
+                        snapshot: model.snapshot(for: selectedProvider),
+                        isRefreshing: model.isRefreshing,
+                        lastRefresh: model.lastRefresh,
+                        refresh: { model.refreshAccountOnPanelOpen(force: true) },
+                        slideEdge: slideEdge
+                    )
+                    .padding(.horizontal, 12)
+                    .padding(.top, 9)
+                    .padding(.bottom, 6)
+                }
 
                 // 底部构成主义发丝标语与系统状态指示栏（小横杠数量与选中位置同顶部 Provider 动态联动）
                 PopoverFooter(
@@ -72,12 +79,17 @@ struct PopoverView: View {
     }
 
     private func selectProvider(_ provider: Provider) {
+        guard model.navigation.visibleProviders.contains(provider) else { return }
         let order = model.navigation.visibleProviders
         let oldIndex = order.firstIndex(of: selectedProvider) ?? 0
         let newIndex = order.firstIndex(of: provider) ?? 0
         slideEdge = newIndex >= oldIndex ? .trailing : .leading
-        withAnimation(.easeInOut(duration: 0.22)) {
+        if reduceMotion {
             selectedSection = .provider(provider)
+        } else {
+            withAnimation(.easeInOut(duration: 0.22)) {
+                selectedSection = .provider(provider)
+            }
         }
         model.selectProvider(provider)
     }
@@ -88,18 +100,41 @@ struct PopoverView: View {
     }
 
     private var normalizedSection: PopoverSection {
-        guard case let .provider(provider) = selectedSection else { return selectedSection }
-        return model.navigation.isEnabled(provider) ? .provider(provider) : .provider(.codex)
+        guard case let .provider(provider) = selectedSection,
+              !model.navigation.visibleProviders.contains(provider),
+              let first = model.navigation.visibleProviders.first else { return selectedSection }
+        return .provider(first)
     }
 
     private func normalizeSelection() {
-        guard case let .provider(provider) = selectedSection, !model.navigation.isEnabled(provider) else { return }
-        selectedSection = .provider(model.navigation.visibleProviders.first ?? .codex)
+        guard case let .provider(provider) = selectedSection else { return }
+        if !model.navigation.visibleProviders.contains(provider),
+           let first = model.navigation.visibleProviders.first {
+            selectedSection = .provider(first)
+        }
     }
 
     private func restoreSelection() {
-        guard let provider = model.navigation.selectedProvider, model.navigation.isEnabled(provider) else { return }
+        guard let provider = model.navigation.selectedProvider,
+              model.navigation.visibleProviders.contains(provider) else { return }
         selectedSection = .provider(provider)
+    }
+}
+
+private struct PopoverProvidersEmptyState: View {
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "slider.horizontal.3")
+                .font(.system(size: 24, weight: .light))
+                .foregroundStyle(AppTheme.tertiaryText)
+            Text("没有已启用的服务商")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppTheme.primaryText)
+            Text("请在控制中心的“服务商与诊断”中重新启用。")
+                .font(.system(size: 11))
+                .foregroundStyle(AppTheme.secondaryText)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -166,7 +201,8 @@ struct PanelMenuButton: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
-        .help("启动控制中心总窗口 (Control Center)")
+        .help("打开控制中心")
+        .accessibilityLabel("打开控制中心")
     }
 }
 
@@ -175,43 +211,37 @@ struct PopoverFooter: View {
     var providers: [Provider] = [.codex, .kimiCode]
     var selectedProvider: Provider = .codex
     var onSelect: ((Provider) -> Void)? = nil
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
             Rectangle()
                 .fill(AppTheme.hairline)
                 .frame(height: 0.75)
-
             HStack {
-                HStack(spacing: 4) {
-                    Text(selectedProvider.displayName)
-                        .font(.system(size: 11, weight: .medium))
-                        .tracking(0.6)
-                        .foregroundStyle(AppTheme.tertiaryText)
-                }
-
+                Text(providers.isEmpty ? "未启用服务商" : selectedProvider.displayName)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(AppTheme.tertiaryText)
                 Spacer()
-
-                // 与顶部 Provider 完全数量对齐并按位置联动的微型绿色脉冲阵列
-                HStack(spacing: 3) {
+                HStack(spacing: 0) {
                     ForEach(providers, id: \.self) { provider in
                         let isSelected = provider == selectedProvider
-                        Button {
-                            onSelect?(provider)
-                        } label: {
+                        Button { onSelect?(provider) } label: {
                             RoundedRectangle(cornerRadius: 0.5)
                                 .fill(isSelected ? AppTheme.accent : Color.white.opacity(0.14))
                                 .frame(width: isSelected ? 8 : 4, height: 2)
-
+                                .frame(width: 24, height: 24)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("切换到 \(provider.displayName)")
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
                     }
                 }
-                .animation(.easeInOut(duration: 0.20), value: selectedProvider)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.20), value: selectedProvider)
             }
             .padding(.horizontal, 14)
-            .frame(height: 22)
+            .frame(height: 27)
         }
     }
 }

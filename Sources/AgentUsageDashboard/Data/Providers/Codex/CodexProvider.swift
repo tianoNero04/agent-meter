@@ -42,12 +42,15 @@ struct CodexProvider: UsageProviderAdapter {
         do {
             accountData = try await directApiClient.fetch()
         } catch {
-            // 直连 API 失败（未找到凭据、网络不通等），平滑降级调用 app-server 兜底
-            do {
-                accountData = try await appServerClient.fetch()
-                usedSource = "app-server + session-jsonl"
-            } catch {
+            if error is CancellationError || (error as NSError).code == NSURLErrorCancelled {
                 accountError = error
+            } else {
+                do {
+                    accountData = try await appServerClient.fetch()
+                    usedSource = "app-server + session-jsonl"
+                } catch {
+                    accountError = error
+                }
             }
         }
 
@@ -82,7 +85,7 @@ struct CodexProvider: UsageProviderAdapter {
             windows: previous.windows,
             accountUsage: previous.accountUsage,
             localTokenUsage: local.tokenUsage,
-            localDailyBuckets: !local.dailyBuckets.isEmpty ? local.dailyBuckets : previous.localDailyBuckets,
+            localDailyBuckets: local.dailyBuckets,
             localModels: local.models,
             source: previous.source == "none" ? "session-jsonl" : previous.source,
             collectedAt: Date(),

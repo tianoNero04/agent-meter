@@ -5,41 +5,44 @@ import ServiceManagement
 struct GeneralSettingsTab: View {
     @ObservedObject var model: DashboardModel
     @State private var launchAtLogin: Bool = (SMAppService.mainApp.status == .enabled)
-
-    init(model: DashboardModel) {
-        self.model = model
-    }
+    @State private var launchAtLoginError: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
-            // 顶栏刊头标示
-            tabHeader(
-                title: "通用系统设置",
-                subtitle: "PREFERENCES // GENERAL.SYSTEM",
-                icon: "gearshape"
-            )
+            HStack(spacing: 8) {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(AppTheme.accent)
+                Text("通用设置")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
+                Spacer()
+            }
 
-            // 开机启动卡片
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("开机自动启动")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(AppTheme.primaryText)
-
-                        Text("在 macOS 系统开机登录时静默启动 Agent Meter 菜单栏小工具")
-                            .font(.system(size: 11, weight: .regular))
+                        Text("登录 macOS 后在菜单栏启动 Agent Meter")
+                            .font(.system(size: 11))
                             .foregroundStyle(AppTheme.secondaryText)
                     }
-
                     Spacer()
-
                     Toggle("", isOn: $launchAtLogin)
                         .labelsHidden()
                         .toggleStyle(.switch)
-                        .onChange(of: launchAtLogin) { enable in
-                            updateLaunchAtLogin(enabled: enable)
+                        .accessibilityLabel("开机自动启动")
+                        .onChange(of: launchAtLogin) { enabled in
+                            updateLaunchAtLogin(enabled: enabled)
                         }
+                }
+                if let launchAtLoginError {
+                    Text(launchAtLoginError)
+                        .font(.system(size: 11))
+                        .foregroundStyle(AppTheme.warning)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .padding(16)
@@ -52,20 +55,17 @@ struct GeneralSettingsTab: View {
                     )
             )
 
-            // 菜单栏常驻策略说明卡片
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
                     Image(systemName: "menubar.rectangle")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(AppTheme.accent)
-
-                    Text("系统状态栏极简纯净原则")
+                    Text("菜单栏与控制中心")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(AppTheme.primaryText)
                 }
-
-                Text("Agent Meter 遵循克制、无打扰的瑞士设计原则。macOS 顶部状态栏仅保留高清晰度极简几何图标，不常驻数字或跳动字符；当点击右上角面板按钮启动控制中心总窗口时，将即刻动态唤起 Dock 栏图标并激活前台。")
-                    .font(.system(size: 11, weight: .regular))
+                Text("菜单栏仅显示应用图标。打开控制中心时，Agent Meter 会激活窗口并显示 Dock 图标；关闭控制中心后恢复菜单栏模式。")
+                    .font(.system(size: 11))
                     .foregroundStyle(AppTheme.secondaryText)
                     .lineSpacing(4)
             }
@@ -78,53 +78,28 @@ struct GeneralSettingsTab: View {
                             .stroke(AppTheme.hairline, lineWidth: 0.75)
                     )
             )
-
             Spacer()
         }
-        .padding(.top, 24)
-        .padding(.horizontal, 24)
-        .padding(.bottom, 24)
+        .padding(24)
         .onAppear {
             launchAtLogin = (SMAppService.mainApp.status == .enabled)
+            launchAtLoginError = nil
         }
     }
 
-    /// 更新开机自启动配置
     private func updateLaunchAtLogin(enabled: Bool) {
         do {
             if enabled {
                 if SMAppService.mainApp.status != .enabled {
                     try SMAppService.mainApp.register()
                 }
-            } else {
-                if SMAppService.mainApp.status == .enabled {
-                    try SMAppService.mainApp.unregister()
-                }
+            } else if SMAppService.mainApp.status == .enabled {
+                try SMAppService.mainApp.unregister()
             }
+            launchAtLoginError = nil
         } catch {
-            print("更新开机启动失败：\(error)")
-        }
-    }
-
-    /// 通用标题栏样式
-    func tabHeader(title: String, subtitle: String, icon: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(AppTheme.accent)
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(AppTheme.primaryText)
-
-                Text(subtitle)
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .tracking(0.8)
-                    .foregroundStyle(AppTheme.tertiaryText)
-            }
-
-            Spacer()
+            launchAtLogin = (SMAppService.mainApp.status == .enabled)
+            launchAtLoginError = "无法更新开机启动：\(error.localizedDescription)"
         }
     }
 }

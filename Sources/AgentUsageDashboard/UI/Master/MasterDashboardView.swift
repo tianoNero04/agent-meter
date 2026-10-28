@@ -5,7 +5,12 @@ struct MasterDashboardView: View {
     @ObservedObject var model: DashboardModel
     @State private var selectedSection: MasterSection = .overview
     @State private var latencyBadge: String? = nil
-    @State private var modelCountBadge: String? = nil
+
+    private var modelCountBadge: String? {
+        let provider = model.navigation.selectedProvider ?? .codex
+        let count = model.snapshot(for: provider).localModels.count
+        return count > 0 ? "\(count)" : nil
+    }
 
     init(model: DashboardModel, initialSection: MasterSection = .overview) {
         self.model = model
@@ -55,15 +60,7 @@ struct MasterDashboardView: View {
         .navigationTitle("")
         .background(WindowTitlebarConfigurator())
         .onAppear {
-            // 打开控制台总窗口时动态在 Dock 栏唤起图标并激活应用
             DockPolicyManager.shared.windowDidAppear("master")
-
-            // 初始化模型数徽标
-            let currentProvider = model.navigation.selectedProvider ?? .codex
-            let count = model.snapshot(for: currentProvider).localModels.count
-            if count > 0 {
-                modelCountBadge = "\(count)"
-            }
         }
         .onDisappear {
             // 关闭总窗口时通知管理器评估并恢复为 accessory 纯菜单栏模式

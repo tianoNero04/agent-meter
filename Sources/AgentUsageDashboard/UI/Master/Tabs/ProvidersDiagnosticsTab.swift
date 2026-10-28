@@ -15,11 +15,6 @@ struct ProvidersDiagnosticsTab: View {
         model.localTools
     }
 
-    /// 本地所有已检测到安装的工具链环境（直接响应 model.localTools）
-    private var detectedInstalledTools: [LocalToolEnvironment] {
-        model.localTools.filter(\.isInstalled)
-    }
-
     init(model: DashboardModel, latencyBadge: Binding<String?>) {
         self.model = model
         self._latencyBadge = latencyBadge
@@ -75,25 +70,26 @@ struct ProvidersDiagnosticsTab: View {
                     .disabled(isTesting)
                 }
 
-                // 服务商与 Agent 通道状态列表（所有卡片严格绑定 model.navigation 开关与浮窗联动）
                 VStack(spacing: 12) {
-                    if detectedInstalledTools.isEmpty {
-                        // 环境检测尚未就绪时兜底显示核心提供商卡片
-                        unifiedProviderCard(for: .codex, name: "Codex CLI", vendor: "OpenAI", version: nil, location: "读取 Keychain 或 ~/.codex/auth.json", iconName: "terminal.fill")
-                        unifiedProviderCard(for: .kimiCode, name: "Kimi Code", vendor: "Moonshot AI", version: nil, location: "读取 ~/.kimi-code/credentials/kimi-code.json", iconName: "sparkles")
-                    } else {
-                        ForEach(detectedInstalledTools) { tool in
-                            if let provider = Provider(toolId: tool.id) {
-                                unifiedProviderCard(
-                                    for: provider,
-                                    name: tool.name,
-                                    vendor: tool.vendor,
-                                    version: tool.version,
-                                    location: tool.locationPath ?? tool.statusDescription,
-                                    iconName: tool.iconName
-                                )
-                            }
+                    if model.isDetectingEnv {
+                        HStack(spacing: 8) {
+                            ProgressView().controlSize(.small)
+                            Text("正在检测本机客户端；已登录凭据仍可用于账号查询")
+                                .font(.system(size: 11))
+                                .foregroundStyle(AppTheme.secondaryText)
                         }
+                    }
+                    ForEach(Provider.supportedProviders, id: \.self) { provider in
+                        let tool = toolEnvironments.first { $0.id == provider.toolId }
+                        unifiedProviderCard(
+                            for: provider,
+                            name: provider.displayName,
+                            vendor: tool?.vendor ?? provider.vendorName,
+                            version: tool?.version,
+                            location: tool?.locationPath ?? tool?.statusDescription ?? "未检测到客户端；可尝试本机登录凭据",
+                            iconName: tool?.iconName ?? provider.iconName,
+                            isInstalled: tool?.isInstalled ?? false
+                        )
                     }
                 }
 
@@ -183,21 +179,21 @@ struct ProvidersDiagnosticsTab: View {
         }
     }
 
-    /// 统一服务商状态与开关联动卡片：切换开关实时驱动 model.setProviderEnabled 并同步菜单栏浮窗
     private func unifiedProviderCard(
         for provider: Provider,
         name: String,
         vendor: String,
         version: String?,
         location: String,
-        iconName: String
+        iconName: String,
+        isInstalled: Bool
     ) -> some View {
         let isEnabled = model.navigation.isEnabled(provider)
 
         return HStack(spacing: 12) {
             Image(systemName: iconName)
                 .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(AppTheme.accent)
+                .foregroundStyle(isInstalled ? AppTheme.accent : AppTheme.tertiaryText)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -205,41 +201,30 @@ struct ProvidersDiagnosticsTab: View {
                     Text("\(name) (\(vendor))")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(AppTheme.primaryText)
-
-                    if let ver = version {
-                        Text(ver)
+                    if let version {
+                        Text(version)
                             .font(.system(size: 11, weight: .semibold, design: .monospaced))
                             .foregroundStyle(AppTheme.success)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 1)
-                            .background(
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(AppTheme.success.opacity(0.12))
-                            )
                     } else {
-                        Text("已就绪")
+                        Text(isInstalled ? "已安装" : "未检测到")
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(AppTheme.success)
+                            .foregroundStyle(AppTheme.secondaryText)
                     }
                 }
-
                 Text(location)
-                    .font(.system(size: 11, weight: .regular, design: .monospaced))
+                    .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(AppTheme.secondaryText)
                     .lineLimit(1)
+                    .help(location)
             }
-
             Spacer()
-
-            // 服务商开关：开启时浮窗菜单栏立即显示该提供商，关闭时浮窗菜单栏立即隐藏
             Toggle("", isOn: Binding(
                 get: { isEnabled },
-                set: { enabled in
-                    model.setProviderEnabled(provider, enabled: enabled)
-                }
+                set: { model.setProviderEnabled(provider, enabled: $0) }
             ))
             .labelsHidden()
             .toggleStyle(.switch)
+            .accessibilityLabel("在菜单栏显示 \(provider.displayName)")
         }
         .padding(14)
         .background(
@@ -256,6 +241,8 @@ struct ProvidersDiagnosticsTab: View {
     private func runDiagnostics() {
         guard !isTesting else { return }
         isTesting = true
+        diagnosticResults = []
+        latencyBadge = nil
 
         Task { @MainActor in
             var targets: [(id: String, name: String, url: URL)] = []
@@ -281,9 +268,10 @@ struct ProvidersDiagnosticsTab: View {
             self.diagnosticResults = results
             self.isTesting = false
 
-            // 取有效结果的平均延迟作为侧边栏徽标更新
             let successful = results.filter(\.isSuccess)
-            if !successful.isEmpty {
+            if successful.isEmpty {
+                self.latencyBadge = "—"
+            } else {
                 let avg = successful.map(\.latencyMs).reduce(0, +) / successful.count
                 self.latencyBadge = "\(avg)ms"
             }
@@ -420,7 +408,7 @@ struct ProvidersDiagnosticsTab: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(
-                            RoundedRectangle(cornerRadius: 6)
+                            RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
                                 .fill(AppTheme.background.opacity(tool.isInstalled ? 0.6 : 0.25))
                         )
                     }

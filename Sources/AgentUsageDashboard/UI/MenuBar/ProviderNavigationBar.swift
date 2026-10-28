@@ -6,6 +6,7 @@ struct ProviderNavigationBar: View {
     @Binding var selection: PopoverSection
     let onSelect: (Provider) -> Void
     @Namespace private var tabNamespace
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 9) {
@@ -19,7 +20,7 @@ struct ProviderNavigationBar: View {
                 }
             }
         }
-        .animation(.easeInOut(duration: 0.20), value: selection)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.20), value: selection)
     }
 }
 
@@ -73,6 +74,8 @@ struct ProviderIconTab: View {
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
         .help(provider.displayName)
+        .accessibilityLabel(provider.displayName)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

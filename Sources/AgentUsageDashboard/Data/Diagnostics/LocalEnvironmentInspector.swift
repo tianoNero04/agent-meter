@@ -40,8 +40,12 @@ public struct LocalToolEnvironment: Sendable, Identifiable, Hashable {
     }
 }
 
+protocol LocalEnvironmentInspecting: Sendable {
+    func inspectAllTools() async -> [LocalToolEnvironment]
+}
+
 /// 本地环境检测服务：负责并发扫描系统中的主流 AI Agent CLI 与桌面应用
-public final class LocalEnvironmentInspector: Sendable {
+public final class LocalEnvironmentInspector: LocalEnvironmentInspecting {
     private var fileManager: FileManager { FileManager.default }
 
     public init() {}
@@ -79,16 +83,19 @@ public final class LocalEnvironmentInspector: Sendable {
                 results.append(item)
             }
 
-            // 按固定预设顺序返回，确保 UI 呈现稳定
-            let order = [
-                "codex", "kimi", "antigravity", "claude", "cursor", "vscode",
-                "grok", "opencode", "openclaw", "hermes", "pi", "ollama"
-            ]
-            return results.sorted { a, b in
-                let indexA = order.firstIndex(of: a.id) ?? 99
-                let indexB = order.firstIndex(of: b.id) ?? 99
-                return indexA < indexB
-            }
+            return Self.sortTools(results)
+        }
+    }
+
+    static func sortTools(_ tools: [LocalToolEnvironment]) -> [LocalToolEnvironment] {
+        let order = [
+            "codex", "kimi", "antigravity", "claude", "cursor", "vscode",
+            "grok", "opencode", "openclaw", "hermes", "pi", "ollama"
+        ]
+        return tools.sorted { lhs, rhs in
+            let left = order.firstIndex(of: lhs.id) ?? 99
+            let right = order.firstIndex(of: rhs.id) ?? 99
+            return left < right
         }
     }
 

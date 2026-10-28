@@ -67,6 +67,16 @@ final class FakeProviderSettingsStore: ProviderSettingsStore {
     }
 }
 
+final class FakeEnvironmentInspector: LocalEnvironmentInspecting, @unchecked Sendable {
+    var tools: [LocalToolEnvironment] = []
+    private(set) var callCount = 0
+
+    func inspectAllTools() async -> [LocalToolEnvironment] {
+        callCount += 1
+        return tools
+    }
+}
+
 /// 一个最小可用的 `codex app-server --stdio` 假实现，依次应答握手和三个账号请求。
 func fakeCodexAppServerScript() -> String {
     """

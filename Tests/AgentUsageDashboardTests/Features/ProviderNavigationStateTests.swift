@@ -40,12 +40,33 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(navigation.visibleProviders, [.codex, .kimiCode])
     }
 
-    func testUndetectedProviderIsHiddenFromVisibleProvidersEvenIfEnabled() {
+    func testInitialSelectionIgnoresCLIDetection() {
+        let navigation = ProviderNavigationState(
+            enabledProviders: [.codex, .kimiCode],
+            detectedProviders: [.codex],
+            selectedProvider: .kimiCode
+        )
+
+        XCTAssertEqual(navigation.selectedProvider, .kimiCode)
+        XCTAssertEqual(navigation.visibleProviders, [.codex, .kimiCode])
+    }
+
+    func testActiveProviderFallsBackToFirstEnabledProvider() {
+        let navigation = ProviderNavigationState(
+            enabledProviders: [.kimiCode],
+            detectedProviders: [],
+            selectedProvider: .codex
+        )
+
+        XCTAssertEqual(navigation.activeProvider, .kimiCode)
+    }
+
+    func testEnabledProviderRemainsVisibleWhenCLIIsNotDetected() {
         var navigation = ProviderNavigationState()
-        // 本地环境仅检测到了 Codex，未检测到 Kimi
         navigation.updateDetectedProviders([.codex])
 
-        // 即使设置中开启了 Kimi，未检测到的提供商也绝不在浮窗菜单栏显示
-        XCTAssertEqual(navigation.visibleProviders, [.codex])
+        XCTAssertEqual(navigation.visibleProviders, [.codex, .kimiCode])
+        XCTAssertTrue(navigation.isEnabled(.kimiCode))
+        XCTAssertFalse(navigation.isDetected(.kimiCode))
     }
 }

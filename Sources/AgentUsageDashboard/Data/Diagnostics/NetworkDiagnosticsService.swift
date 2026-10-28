@@ -78,8 +78,8 @@ public final class NetworkDiagnosticsService: Sendable {
     /// 已知主流 Agent 官方与云端服务探测端点映射
     public static let knownEndpoints: [String: (name: String, url: URL)] = [
         "codex": ("Codex 官方通道", URL(string: "https://chatgpt.com/api/auth/session")!),
-        "kimi": ("Kimi Code 通道", URL(string: "https://api.moonshot.cn")!),
-        "antigravity": ("Google Antigravity 通道", URL(string: "https://generativelanguage.googleapis.com")!),
+        "kimi": ("Kimi Code 通道", URL(string: "https://api.kimi.com/coding/v1/usages")!),
+        "antigravity": ("Google Antigravity 通道", URL(string: "https://cloudcode-pa.googleapis.com")!),
         "claude": ("Claude Code (Anthropic) 通道", URL(string: "https://api.anthropic.com")!),
         "cursor": ("Cursor AI 服务通道", URL(string: "https://api2.cursor.sh")!),
         "vscode": ("VS Code Copilot 通道", URL(string: "https://api.githubcopilot.com")!),
@@ -116,13 +116,9 @@ public final class NetworkDiagnosticsService: Sendable {
 
     /// 一键并行探测默认的主流服务商通道节点
     public func runFullDiagnostics() async -> [DiagnosticResult] {
-        let targets = [
-            ("codex", "Codex 官方通道", URL(string: "https://chatgpt.com/api/auth/session")!),
-            ("kimi", "Kimi Code 通道", URL(string: "https://api.moonshot.cn")!),
-            ("antigravity", "Google Antigravity 通道", URL(string: "https://generativelanguage.googleapis.com")!),
-            ("claude", "Claude Code (Anthropic) 通道", URL(string: "https://api.anthropic.com")!),
-            ("cursor", "Cursor AI 服务通道", URL(string: "https://api2.cursor.sh")!)
-        ]
+        let targets = ["codex", "kimi", "antigravity", "claude", "cursor"].compactMap { id in
+            Self.knownEndpoints[id].map { (id: id, name: $0.name, url: $0.url) }
+        }
         return await runDiagnostics(targets: targets)
     }
 }

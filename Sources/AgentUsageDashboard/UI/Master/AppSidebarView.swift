@@ -143,10 +143,10 @@ struct AppSidebarView: View {
         HStack(spacing: 10) {
             // 品牌微圆角 Logo 徽标
             ZStack {
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
                     .fill(AppTheme.surface)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 6)
+                        RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
                             .stroke(AppTheme.hairlineBright, lineWidth: 0.75)
                     )
 
@@ -187,10 +187,10 @@ struct AppSidebarView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
                 .fill(AppTheme.surface.opacity(0.6))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: AppTheme.gridCornerRadius)
                         .stroke(AppTheme.hairline, lineWidth: 0.75)
                 )
         )

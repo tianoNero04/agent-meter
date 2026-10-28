@@ -3,7 +3,6 @@ import SwiftUI
 /// 现代深色模型用量看板
 struct ModelUsageTab: View {
     @ObservedObject var model: DashboardModel
-    @State private var selectedProviderState: Provider? = nil
     @State private var preferences: PricingPreferences
 
     private let store: PricingSettingsStore
@@ -14,12 +13,8 @@ struct ModelUsageTab: View {
         self._preferences = State(initialValue: store.load())
     }
 
-    /// 当前激活查看的提供商（优先取手动选择，其次取全局选择，默认 Codex）
     private var activeProvider: Provider {
-        if let s = selectedProviderState, model.navigation.visibleProviders.contains(s) {
-            return s
-        }
-        return model.navigation.selectedProvider ?? model.navigation.visibleProviders.first ?? .codex
+        model.navigation.activeProvider
     }
 
     /// 当前服务商快照
@@ -86,9 +81,6 @@ struct ModelUsageTab: View {
         }
         .onAppear {
             preferences = store.load()
-            if selectedProviderState == nil {
-                selectedProviderState = model.navigation.selectedProvider
-            }
         }
     }
 
@@ -108,7 +100,7 @@ struct ModelUsageTab: View {
 
             // 菜单选择器在窄窗口和多个服务商下都保留完整名称。
             if model.navigation.visibleProviders.count > 1 {
-                Picker("服务商", selection: Binding(get: { activeProvider }, set: { selectedProviderState = $0 })) {
+                Picker("服务商", selection: Binding(get: { activeProvider }, set: { model.selectProvider($0) })) {
                     ForEach(model.navigation.visibleProviders, id: \.self) { Text($0.displayName).tag($0) }
                 }
                 .pickerStyle(.menu)

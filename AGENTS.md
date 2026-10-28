@@ -53,25 +53,25 @@ UI 样式约定：遵循根目录 `DESIGN.md` 的瑞士国际主义、极简扁�
 
 - 无固定轮询：刷新严格由弹窗出现（带 30 秒智能防刷冷却，平时完全不发网络请求，弹窗关闭立即中断在途请求）、手动刷新和目录变化（1 秒防抖后的本地日志刷新，绝不触发网络）触发。
 - 文件监听忽略本进程产生的事件，防止 SQLite WAL/SHM 维护形成“采集 → 文件变化 → 再次采集”的反馈循环；外部 CLI 的日志更新仍须触发刷新。
-- 账号通道与本地通道解耦：Codex 与 Kimi Code 额度均优先通过轻量级 HTTPS 直连接口（读取本地 Keychain 或 `~/.codex/auth.json`、`~/.kimi-code/credentials/kimi-code.json` 凭据直接请求官方后端，百毫秒级且免子进程开销）；Codex 直连失败或凭据未配置时降级至 `codex app-server` 兜底。
+- 账号通道与本地通道解耦：Codex 与 Kimi Code 额度均优先通过轻量级 HTTPS 直连接口（Codex 读取本地 Keychain 或 `~/.codex/auth.json`，Kimi 读取 `~/.kimi-code/credentials/kimi-code.json`，百毫秒级且免子进程开销）；Codex 直连失败或凭据未配置时降级至 `codex app-server` 兜底，取消请求时不得降级或留下后台进程。
 - 本地日志统计对齐 cc-switch：同时支持 `last_token_usage` 与 `total_token_usage` 的 delta 增量计算，兼容 `cached_input_tokens` 与 `cache_read_input_tokens` 别名，并从本地日志聚合 7 日历史趋势分桶与计算缓存命中率（Cache Hit Rate）。
 - 日志采集在 utility 优先级后台执行，结果回主 actor 发布。
 - 采集器按文件身份、修改时间和文件大小做增量缓存，未变化文件不重复解析；完整行之后的追加只读取新字节，保留累计用量与模型上下文。文件替换、截断、边界签名变化或未结束的尾行必须回退到完整解析，避免漏计或重复计数。
 - 日志读取以本次文件大小为上限，防止持续写入导致单次采集不结束；换行扫描只扫描尚未检查过的字节，禁止对超长行反复扫描整个前缀。缓存按文件/日期聚合，不保留逐条事件；同一个采集器的采集串行执行。
 - FileHandle 读取缓冲必须逐块释放 autorelease 对象，不能仅在解析有效 JSON 时释放，避免无用日志行让冷启动内存随全部日志体积增长。
-- 内存中的历史快照与落盘保持同一 30 天裁剪规则，并按 5 分钟最小间隔记录，常驻期间不无限增长；落盘加载时裁掉 30 天外或未来时间的本地分桶。
+- 内存中的历史快照与落盘保持同一 30 天裁剪规则，并按 5 分钟最小间隔记录，常驻期间不无限增长；保存和加载时都裁掉 30 天外或未来时间的本地分桶。
 - 弹窗关闭后不保持网络连接，无常驻后台网络或 CLI 进程。
 
 ## 隐私要求
 
 - 不保存提示词、回复、代码正文、Cookie、令牌或完整日志行。
-- 只访问明确的 Codex/Kimi 数据路径（`~/.codex/sessions`、`~/.kimi-code/sessions`）和 `~/Library/Application Support/AgentUsageDashboard/snapshots.json`。
+- 只访问 README 列明的 Codex、Kimi、Antigravity 凭据、日志与统计路径，以及 `~/Library/Application Support/AgentUsageDashboard/snapshots.json`；环境诊断仅检查文档声明的工具路径与应用元数据。
 - 快照只保存最近 30 天，JSON 字段和文件路径变更属于数据格式变更，需同步 README。
 
 ## 测试要求
 
 - 测试使用临时目录、fixture 和 fake（`Tests/AgentUsageDashboardTests/Support/TestFakes.swift`），不依赖真实账号、用户目录或网络。
-- 测试目录按职责镜像源码：`Core/`、`Data/`、`Features/`、`Support/`。
+- 测试目录按职责镜像源码：`Core/`、`Data/`、`Features/`、`UI/`、`Support/`。
 - ISO8601 落盘精度到秒，涉及快照相等的断言使用整秒时间。
 
 ## 文档同步

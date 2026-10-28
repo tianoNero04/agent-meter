@@ -77,17 +77,21 @@ struct AntigravityDirectApiClient {
         for creds in candidates {
             do {
                 return try await executeFetch(creds: creds)
-            } catch AntigravityDirectApiError.credentialExpired {
-                if let refreshToken = creds.refreshToken, !refreshToken.isEmpty,
-                   let newAccessToken = try? await refreshAccessToken(refreshToken: refreshToken) {
-                    var refreshed = creds
-                    refreshed.accessToken = newAccessToken
-                    if let result = try? await executeFetch(creds: refreshed) {
-                        return result
+            } catch AntigravityDirectApiError.credentialExpired(let statusCode) {
+                lastError = AntigravityDirectApiError.credentialExpired(statusCode)
+                if let refreshToken = creds.refreshToken, !refreshToken.isEmpty {
+                    do {
+                        let newAccessToken = try await refreshAccessToken(refreshToken: refreshToken)
+                        var refreshed = creds
+                        refreshed.accessToken = newAccessToken
+                        return try await executeFetch(creds: refreshed)
+                    } catch {
+                        if Self.isCancellation(error) { throw error }
+                        lastError = error
                     }
                 }
-                lastError = AntigravityDirectApiError.credentialExpired(401)
             } catch {
+                if Self.isCancellation(error) { throw error }
                 lastError = error
             }
         }
@@ -97,51 +101,49 @@ struct AntigravityDirectApiClient {
 
     /// 执行网络请求流程：先获取 project_id 与 tier，再获取配额摘要（均具备端点自动容灾降级）
     private func executeFetch(creds: AntigravityCredentials) async throws -> AntigravityAccountData {
-        // 1. 调用 loadCodeAssist（按顺序尝试三级端点）
         var loadData: Data?
         for endpoint in Self.loadCodeAssistEndpoints {
-            let req = makePostRequest(url: endpoint, accessToken: creds.accessToken, body: [
+            let request = makePostRequest(url: endpoint, accessToken: creds.accessToken, body: [
                 "metadata": ["ideType": "ANTIGRAVITY"]
             ])
-            if let (data, resp) = try? await sendRequest(req), resp.statusCode == 200 {
-                loadData = data
+            do {
+                loadData = try await sendRequest(request).0
                 break
+            } catch AntigravityDirectApiError.credentialExpired(let statusCode) {
+                throw AntigravityDirectApiError.credentialExpired(statusCode)
+            } catch {
+                if Self.isCancellation(error) { throw error }
             }
         }
 
-        let resolvedProjectId: String?
-        let rawTier: String?
-        if let validLoadData = loadData {
-            let parsed = Self.parseLoadCodeAssist(data: validLoadData)
-            resolvedProjectId = parsed.projectId
-            rawTier = parsed.tierName
-        } else {
-            resolvedProjectId = nil
-            rawTier = nil
-        }
+        let parsed = loadData.map { Self.parseLoadCodeAssist(data: $0) }
+        let projectId = creds.projectId ?? parsed?.projectId
+        let tier = parsed?.tierName.map { Self.normalizeTier($0) }
 
-        let projectId = creds.projectId ?? resolvedProjectId
-        let tier = Self.normalizeTier(rawTier)
-
-        // 2. 调用 retrieveUserQuotaSummary（按顺序尝试三级端点）
         var summaryBody: [String: Any] = [:]
-        if let pid = projectId, !pid.isEmpty {
-            summaryBody["project"] = pid
+        if let projectId, !projectId.isEmpty {
+            summaryBody["project"] = projectId
         }
         var summaryData: Data?
+        var lastError: Error?
         for endpoint in Self.quotaSummaryEndpoints {
-            let req = makePostRequest(url: endpoint, accessToken: creds.accessToken, body: summaryBody)
-            if let (data, resp) = try? await sendRequest(req), resp.statusCode == 200 {
-                summaryData = data
+            let request = makePostRequest(url: endpoint, accessToken: creds.accessToken, body: summaryBody)
+            do {
+                summaryData = try await sendRequest(request).0
                 break
+            } catch AntigravityDirectApiError.credentialExpired(let statusCode) {
+                throw AntigravityDirectApiError.credentialExpired(statusCode)
+            } catch {
+                if Self.isCancellation(error) { throw error }
+                lastError = error
             }
         }
 
-        guard let validSummaryData = summaryData else {
-            throw AntigravityDirectApiError.httpError(403, "所有 retrieveUserQuotaSummary 端点均不可用")
+        guard let summaryData else {
+            throw lastError ?? AntigravityDirectApiError.invalidResponseData
         }
 
-        let windows = Self.parseQuotaSummary(data: validSummaryData)
+        let windows = Self.parseQuotaSummary(data: summaryData)
         guard !windows.isEmpty else {
             throw AntigravityDirectApiError.invalidResponseData
         }
@@ -150,6 +152,10 @@ struct AntigravityDirectApiClient {
             account: AccountIdentity(planType: tier, email: creds.email),
             windows: windows
         )
+    }
+
+    private static func isCancellation(_ error: Error) -> Bool {
+        error is CancellationError || (error as NSError).code == NSURLErrorCancelled
     }
 
     /// 发送 HTTPS POST 请求并检查状态码
@@ -465,51 +471,43 @@ struct AntigravityDirectApiClient {
             return isoFormatter.date(from: str) ?? fallbackIsoFormatter.date(from: str)
         }
 
-        // 仅提取 Gemini Models 组，与 Codex/Kimi 统一展示 5 小时与周额度
-        guard let geminiGroup = groups.first(where: {
-            let name = ($0["displayName"] as? String ?? $0["display_name"] as? String ?? "").lowercased()
-            return name.contains("gemini")
-        }) ?? groups.first else {
-            return []
-        }
-
-        let buckets = geminiGroup["buckets"] as? [[String: Any]] ?? []
-
-        var window5h: RateLimitWindow?
-        var windowWeekly: RateLimitWindow?
-
-        for bucket in buckets {
-            let w = (bucket["window"] as? String ?? "").lowercased()
-            let id = (bucket["bucketId"] as? String ?? bucket["bucket_id"] as? String ?? "").lowercased()
-            let remaining = (bucket["remainingFraction"] as? NSNumber ?? bucket["remaining_fraction"] as? NSNumber)?.doubleValue ?? 1.0
-            let usedPercent = max(0.0, min(100.0, (1.0 - remaining) * 100.0))
-            let resetsAt = parseDate(bucket["resetTime"] as? String ?? bucket["reset_time"] as? String)
-
-            if w == "5h" || id.contains("5h") {
-                window5h = RateLimitWindow(
-                    id: "antigravity.5h",
-                    usedPercent: usedPercent,
-                    windowMinutes: 300,
-                    resetsAt: resetsAt,
-                    name: nil
-                )
-            } else if w == "weekly" || w == "7d" || id.contains("weekly") {
-                windowWeekly = RateLimitWindow(
-                    id: "antigravity.weekly",
-                    usedPercent: usedPercent,
-                    windowMinutes: 10080,
-                    resetsAt: resetsAt,
-                    name: nil
-                )
-            }
-        }
-
         var result: [RateLimitWindow] = []
-        if let w5 = window5h {
-            result.append(w5)
-        }
-        if let ww = windowWeekly {
-            result.append(ww)
+        for (groupIndex, group) in groups.enumerated() {
+            let groupName = group["displayName"] as? String ?? group["display_name"] as? String ?? "其他模型"
+            let isGemini = groupName.lowercased().contains("gemini")
+            let buckets = group["buckets"] as? [[String: Any]] ?? []
+            var window5h: RateLimitWindow?
+            var windowWeekly: RateLimitWindow?
+
+            for bucket in buckets {
+                let window = (bucket["window"] as? String ?? "").lowercased()
+                let bucketID = (bucket["bucketId"] as? String ?? bucket["bucket_id"] as? String ?? "").lowercased()
+                guard let remaining = (bucket["remainingFraction"] as? NSNumber ?? bucket["remaining_fraction"] as? NSNumber)?.doubleValue else { continue }
+                let usedPercent = max(0.0, min(100.0, (1.0 - remaining) * 100.0))
+                let resetsAt = parseDate(bucket["resetTime"] as? String ?? bucket["reset_time"] as? String)
+                let idPrefix = isGemini ? "antigravity" : "antigravity.group-\(groupIndex)"
+                let name = isGemini ? nil : groupName
+
+                if window == "5h" || bucketID.contains("5h") {
+                    window5h = RateLimitWindow(
+                        id: "\(idPrefix).5h",
+                        usedPercent: usedPercent,
+                        windowMinutes: 300,
+                        resetsAt: resetsAt,
+                        name: name.map { "\($0) · 5 小时" }
+                    )
+                } else if window == "weekly" || window == "7d" || bucketID.contains("weekly") {
+                    windowWeekly = RateLimitWindow(
+                        id: "\(idPrefix).weekly",
+                        usedPercent: usedPercent,
+                        windowMinutes: 10080,
+                        resetsAt: resetsAt,
+                        name: name.map { "\($0) · 本周" }
+                    )
+                }
+            }
+            if let window5h { result.append(window5h) }
+            if let windowWeekly { result.append(windowWeekly) }
         }
         return result
     }

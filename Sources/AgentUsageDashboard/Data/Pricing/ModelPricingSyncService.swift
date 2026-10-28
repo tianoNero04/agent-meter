@@ -112,11 +112,9 @@ final class ModelPricingSyncService: Sendable {
         }
         preferences.syncedPricings = latestPricings
 
-        // 同步后，已与最新官方价格一致的覆盖不再算作本机改价；
-        // 已不在最新目录且没有内置官方基准的覆盖也不保留为陈旧条目。
         preferences.customOverrides = preferences.customOverrides.filter { key, override in
             let official = latestPricings[key] ?? DefaultModelPricings.presets.first(where: { $0.modelName == key })
-            guard let official else { return false }
+            guard let official else { return true }
             return !Self.hasSameRates(override, official)
         }
 

@@ -1,6 +1,5 @@
 import SwiftUI
 import AppKit
-import ServiceManagement
 
 public struct AgentUsageDashboardApp: App {
     @StateObject private var model: DashboardModel
@@ -9,7 +8,6 @@ public struct AgentUsageDashboardApp: App {
         let model = AppDependencies().makeModel()
         _model = StateObject(wrappedValue: model)
         NSApplication.shared.setActivationPolicy(.accessory)
-        try? SMAppService.mainApp.register()
         model.start()
     }
 
@@ -17,7 +15,6 @@ public struct AgentUsageDashboardApp: App {
         MenuBarExtra {
             PopoverView(model: model)
         } label: {
-            // 优先使用 App 的自适应 Logo 作为菜单栏常驻图标，缺失时回退到系统仪表盘图标
             if let icon = BundleImages.menuBarIcon {
                 Image(nsImage: icon)
             } else {
@@ -32,19 +29,12 @@ public struct AgentUsageDashboardApp: App {
         }
         .defaultSize(width: 760, height: 560)
 
-        Window("设置", id: "settings") {
-            SettingsPlaceholderView()
-        }
-        .defaultSize(width: 460, height: 280)
-
-        // 注册统一控制台总窗口（集成 ReactBits app-sidebar-1 风格固定侧边栏与全功能工作区）
         Window("", id: "master") {
             MasterDashboardView(model: model)
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 780, height: 520)
 
-        // 兼容注册旧窗口 ID（以防历史缓存调用）
         Window("", id: "menu") {
             MasterDashboardView(model: model)
         }

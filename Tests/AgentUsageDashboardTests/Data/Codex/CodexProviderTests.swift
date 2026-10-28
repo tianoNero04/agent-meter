@@ -97,4 +97,47 @@ final class CodexProviderTests: XCTestCase {
         XCTAssertEqual(snapshot.source, "app-server + session-jsonl")
         XCTAssertNotNil(snapshot.errorMessage)
     }
+
+    func testCancelledDirectRequestDoesNotFallBackToAppServer() async throws {
+        let root = try makeFixtureRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let authURL = root.appendingPathComponent(".codex/auth.json")
+        try #"{"tokens":{"access_token":"test-token"}}"#.write(to: authURL, atomically: true, encoding: .utf8)
+
+        let marker = root.appendingPathComponent("app-server-started")
+        let script = fakeCodexAppServerScript().replacingOccurrences(
+            of: "import json",
+            with: "import json\nfrom pathlib import Path\nPath(\(marker.path.debugDescription)).write_text(\"started\")"
+        )
+        let executable = root.appendingPathComponent("fake-codex")
+        try script.write(to: executable, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BlockingURLProtocol.self]
+        let provider = CodexProvider(
+            collector: CodexSessionCollector(homeURL: root),
+            appServerClient: CodexAppServerClient(executableURL: executable),
+            directApiClient: CodexDirectApiClient(
+                homeURL: root,
+                session: URLSession(configuration: configuration),
+                allowKeychain: false
+            )
+        )
+
+        let task = Task { await provider.refresh(previous: .empty(.codex), includeAccount: true) }
+        try await Task.sleep(nanoseconds: 50_000_000)
+        task.cancel()
+        _ = await task.value
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path))
+    }
+}
+
+private final class BlockingURLProtocol: URLProtocol {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {}
+    override func stopLoading() {}
 }

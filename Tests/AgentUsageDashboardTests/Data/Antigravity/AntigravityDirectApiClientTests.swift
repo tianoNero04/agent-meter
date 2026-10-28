@@ -51,6 +51,10 @@ final class AntigravityDirectApiClientTests: XCTestCase {
                   "window": "5h",
                   "remainingFraction": 0.8,
                   "resetTime": "2026-09-28T12:38:32Z"
+                },
+                {
+                  "bucketId": "gemini-5h-missing-remaining",
+                  "window": "5h"
                 }
               ]
             },
@@ -77,7 +81,7 @@ final class AntigravityDirectApiClientTests: XCTestCase {
         let data = jsonString.data(using: .utf8)!
         let windows = AntigravityDirectApiClient.parseQuotaSummary(data: data)
 
-        XCTAssertEqual(windows.count, 2)
+        XCTAssertEqual(windows.count, 4)
 
         let w5h = try XCTUnwrap(windows.first { $0.id == "antigravity.5h" })
         XCTAssertEqual(w5h.label, "5 小时")
@@ -88,6 +92,18 @@ final class AntigravityDirectApiClientTests: XCTestCase {
         XCTAssertEqual(wWeekly.label, "本周")
         XCTAssertEqual(wWeekly.windowMinutes, 10080)
         XCTAssertEqual(wWeekly.usedPercent, 5.0, accuracy: 0.1)
+
+        let claude5h = try XCTUnwrap(windows.first {
+            $0.windowMinutes == 300 && $0.id != "antigravity.5h"
+        })
+        XCTAssertEqual(claude5h.label, "Claude and GPT models · 5 小时")
+        XCTAssertEqual(claude5h.usedPercent, 55.0, accuracy: 0.1)
+
+        let claudeWeekly = try XCTUnwrap(windows.first {
+            $0.windowMinutes == 10080 && $0.id != "antigravity.weekly"
+        })
+        XCTAssertEqual(claudeWeekly.label, "Claude and GPT models · 本周")
+        XCTAssertEqual(claudeWeekly.usedPercent, 0.0, accuracy: 0.1)
     }
 
     /// 验证带 go-keyring-base64: 前缀的 Keychain 凭据解析
@@ -138,27 +154,143 @@ final class AntigravityDirectApiClientTests: XCTestCase {
         XCTAssertEqual(email, "jwt_user@example.com")
     }
 
-    func testReadLocalCachedAccountData() {
-        let client = AntigravityDirectApiClient()
-        let cached = client.readLocalCachedAccountData()
-        let toolsPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".antigravity_tools/accounts.json").path
-        if FileManager.default.fileExists(atPath: toolsPath) {
-            XCTAssertNotNil(cached)
-            XCTAssertNotNil(cached?.account.email)
-            XCTAssertFalse(cached?.windows.isEmpty ?? true)
+    func testReadLocalCachedAccountDataUsesTemporaryAccountFixture() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("antigravity-cache-\(UUID().uuidString)", isDirectory: true)
+        let accounts = root.appendingPathComponent(".antigravity_tools/accounts", isDirectory: true)
+        try FileManager.default.createDirectory(at: accounts, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try #"{"current_account_id":"account-1"}"#.write(
+            to: root.appendingPathComponent(".antigravity_tools/accounts.json"),
+            atomically: true,
+            encoding: .utf8
+        )
+        try """
+        {
+          "email": "fixture@example.com",
+          "quota": {
+            "subscription_tier": "g1-pro-tier",
+            "quota_groups": [
+              {
+                "displayName": "Gemini Models",
+                "buckets": [
+                  { "bucketId": "gemini-5h", "window": "5h", "remainingFraction": 0.75 },
+                  { "bucketId": "gemini-weekly", "window": "weekly", "remainingFraction": 0.5 }
+                ]
+              }
+            ]
+          }
         }
+        """.write(to: accounts.appendingPathComponent("account-1.json"), atomically: true, encoding: .utf8)
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [AntigravityURLProtocol.self]
+        let cached = try XCTUnwrap(AntigravityDirectApiClient(
+            homeURL: root,
+            session: URLSession(configuration: configuration),
+            allowKeychain: false
+        ).readLocalCachedAccountData())
+
+        XCTAssertEqual(cached.account.email, "fixture@example.com")
+        XCTAssertEqual(cached.account.planType, "PRO")
+        XCTAssertEqual(cached.windows.map(\.usedPercent), [25, 50])
     }
 
-    func testFetchRealAccountData() async throws {
-        let client = AntigravityDirectApiClient()
-        let toolsPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".antigravity_tools/accounts.json").path
-        if FileManager.default.fileExists(atPath: toolsPath) {
-            if let data = try? await client.fetch() {
-                XCTAssertNotNil(data.account.email)
-                XCTAssertEqual(data.windows.count, 2)
-                XCTAssertEqual(data.windows[0].windowMinutes, 300)
-                XCTAssertEqual(data.windows[1].windowMinutes, 10080)
+    func testUnauthorizedQuotaResponseSurfacesCredentialExpiry() async throws {
+        AntigravityURLProtocol.statusCode = 403
+        AntigravityURLProtocol.blocks = false
+        defer { AntigravityURLProtocol.statusCode = 200 }
+        let (root, client) = try makeNetworkFixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        do {
+            _ = try await client.fetch()
+            XCTFail("鉴权失败不应被转换成普通端点错误")
+        } catch {
+            guard case AntigravityDirectApiError.credentialExpired = error else {
+                return XCTFail("Unexpected error: \(error)")
             }
         }
     }
+
+    func testFetchPropagatesCancellation() async throws {
+        AntigravityURLProtocol.statusCode = 200
+        AntigravityURLProtocol.blocks = true
+        defer { AntigravityURLProtocol.blocks = false }
+        let (root, client) = try makeNetworkFixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let task = Task { try await client.fetch() }
+        try await Task.sleep(nanoseconds: 50_000_000)
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            XCTFail("取消后不应返回账号数据")
+        } catch {
+            XCTAssertTrue(error is CancellationError || (error as NSError).code == NSURLErrorCancelled)
+        }
+    }
+
+    func testLoadFailureDoesNotInventFreeTier() async throws {
+        AntigravityURLProtocol.statusCode = 200
+        AntigravityURLProtocol.blocks = false
+        AntigravityURLProtocol.loadStatusCode = 500
+        AntigravityURLProtocol.quotaBody = #"{"groups":[{"displayName":"Gemini Models","buckets":[{"window":"5h","remainingFraction":0.8}]}]}"#
+        defer {
+            AntigravityURLProtocol.loadStatusCode = nil
+            AntigravityURLProtocol.quotaBody = "{}"
+        }
+        let (root, client) = try makeNetworkFixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let result = try await client.fetch()
+
+        XCTAssertNil(result.account.planType)
+        XCTAssertEqual(result.windows.count, 1)
+    }
+
+    private func makeNetworkFixture() throws -> (URL, AntigravityDirectApiClient) {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("antigravity-network-\(UUID().uuidString)", isDirectory: true)
+        let credentials = root.appendingPathComponent(".gemini/antigravity-cli", isDirectory: true)
+        try FileManager.default.createDirectory(at: credentials, withIntermediateDirectories: true)
+        try #"{"access_token":"old-token","refresh_token":"refresh-token","email":"fixture@example.com"}"#.write(
+            to: credentials.appendingPathComponent("antigravity-oauth-token"),
+            atomically: true,
+            encoding: .utf8
+        )
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [AntigravityURLProtocol.self]
+        let client = AntigravityDirectApiClient(
+            homeURL: root,
+            session: URLSession(configuration: configuration),
+            allowKeychain: false
+        )
+        return (root, client)
+    }
+}
+
+private final class AntigravityURLProtocol: URLProtocol {
+    nonisolated(unsafe) static var statusCode = 200
+    nonisolated(unsafe) static var blocks = false
+    nonisolated(unsafe) static var loadStatusCode: Int?
+    nonisolated(unsafe) static var quotaBody = "{}"
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        guard !Self.blocks, let url = request.url else { return }
+        let isLoad = url.path.contains("loadCodeAssist")
+        let statusCode = isLoad ? (Self.loadStatusCode ?? Self.statusCode) : Self.statusCode
+        let response = HTTPURLResponse(url: url, statusCode: statusCode, httpVersion: nil, headerFields: nil)!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        let body = url.path.contains("retrieveUserQuotaSummary") ? Self.quotaBody : "{}"
+        client?.urlProtocol(self, didLoad: Data(body.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
 }

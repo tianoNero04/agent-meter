@@ -105,6 +105,14 @@ final class CodexDirectApiClientTests: XCTestCase {
         XCTAssertNil(accountId)
     }
 
+    func testParseResponseRejectsSuccessfulResponseWithoutQuotaWindows() {
+        let data = #"{"email":"developer@example.com","plan_type":"plus"}"#.data(using: .utf8)!
+
+        XCTAssertThrowsError(try CodexDirectApiClient.parseResponse(data: data)) { error in
+            XCTAssertEqual(error as? CodexDirectApiError, .invalidResponseData)
+        }
+    }
+
     /// 验证 wham/profiles/me 接口返回报文的解析逻辑（总 Token、峰值与每日分桶）
     func testParseProfileUsageExtractsStatsAndDailyBuckets() throws {
         let jsonString = """

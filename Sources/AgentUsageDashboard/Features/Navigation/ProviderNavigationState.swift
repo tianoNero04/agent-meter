@@ -1,6 +1,6 @@
 import Foundation
 
-/// 顶部 Provider 导航的应用界面状态，由 `ProviderPreferences` 与本地检测环境映射而来。
+/// 顶部 Provider 导航状态：偏好开关决定可见性，环境检测只提供诊断信息。
 struct ProviderNavigationState: Equatable {
     /// 用户在偏好设置中启用的 Provider 集合
     private(set) var enabledProviders: Set<Provider>
@@ -9,11 +9,15 @@ struct ProviderNavigationState: Equatable {
     /// 当前在菜单栏浮窗中选中的 Provider
     private(set) var selectedProvider: Provider?
 
-    /// 浮窗菜单栏动态显示的提供商列表：严格为「已在本地检测到」且「用户处于开启状态」的提供商
     var visibleProviders: [Provider] {
-        Provider.allCases.filter { provider in
-            detectedProviders.contains(provider) && enabledProviders.contains(provider)
+        Provider.allCases.filter { enabledProviders.contains($0) }
+    }
+
+    var activeProvider: Provider {
+        if let selectedProvider, visibleProviders.contains(selectedProvider) {
+            return selectedProvider
         }
+        return visibleProviders.first ?? .codex
     }
 
     init(
@@ -23,7 +27,7 @@ struct ProviderNavigationState: Equatable {
     ) {
         self.enabledProviders = enabledProviders
         self.detectedProviders = detectedProviders
-        let visible = Provider.allCases.filter { detectedProviders.contains($0) && enabledProviders.contains($0) }
+        let visible = Provider.allCases.filter { enabledProviders.contains($0) }
         self.selectedProvider = selectedProvider.flatMap { visible.contains($0) ? $0 : visible.first }
     }
 

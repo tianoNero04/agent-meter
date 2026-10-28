@@ -10,7 +10,9 @@ struct RateLimitRow: View {
             QuotaRowIcon(windowMinutes: window.windowMinutes)
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(window.label).font(.system(size: 12, weight: .medium))
+                    Text(window.label)
+                        .font(.system(size: 12, weight: .medium))
+                        .lineLimit(1)
                     Spacer(minLength: 4)
                     Text("\(window.remainingPercent, specifier: "%.0f")%")
                         .font(.system(size: 17, weight: .semibold))
@@ -23,9 +25,17 @@ struct RateLimitRow: View {
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(window.windowMinutes == 300 ? "距离重置" : "重置时间")
                         .foregroundStyle(AppTheme.secondaryText)
-                    Text(window.windowMinutes == 300 ? countdownText(to: resetsAt) : resetDateText(from: resetsAt))
-                        .foregroundStyle(AppTheme.primaryText)
-                        .monospacedDigit()
+                    if window.windowMinutes == 300 {
+                        TimelineView(.periodic(from: .now, by: 60)) { context in
+                            Text(countdownText(to: resetsAt, now: context.date))
+                                .foregroundStyle(AppTheme.primaryText)
+                                .monospacedDigit()
+                        }
+                    } else {
+                        Text(resetDateText(from: resetsAt))
+                            .foregroundStyle(AppTheme.primaryText)
+                            .monospacedDigit()
+                    }
                 }
                 .font(.system(size: 11))
                 .lineLimit(1)
@@ -33,6 +43,7 @@ struct RateLimitRow: View {
             }
         }
         .padding(.vertical, 6)
+        .accessibilityElement(children: .combine)
     }
 
     private func resetDateText(from date: Date) -> String {
@@ -40,8 +51,8 @@ struct RateLimitRow: View {
         return String(format: "%d/%d %02d:%02d", components.month ?? 0, components.day ?? 0, components.hour ?? 0, components.minute ?? 0)
     }
 
-    private func countdownText(to date: Date) -> String {
-        let seconds = max(0, Int(date.timeIntervalSinceNow))
+    private func countdownText(to date: Date, now: Date) -> String {
+        let seconds = max(0, Int(date.timeIntervalSince(now)))
         if seconds == 0 { return "即刻重置" }
         let days = seconds / 86400, hours = (seconds % 86400) / 3600, minutes = (seconds % 3600) / 60
         if days > 0 { return "\(days)天\(hours)小时" }

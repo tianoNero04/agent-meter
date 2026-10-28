@@ -98,4 +98,29 @@ print(json.dumps({"id": 3, "result": {"summary": {"lifetimeTokens": 42}}}), flus
         XCTAssertEqual(data.windows.first?.remainingPercent, 69)
         XCTAssertEqual(data.usage?.lifetimeTokens, 42)
     }
+
+    func testCancellationTerminatesBlockedAppServerPromptly() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("codex-app-server-cancel-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let executable = root.appendingPathComponent("blocked-codex")
+        try "#!/bin/sh\nsleep 30\n".write(to: executable, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
+
+        let task = Task {
+            try await CodexAppServerClient(executableURL: executable).fetch()
+        }
+        try await Task.sleep(nanoseconds: 100_000_000)
+        let started = Date()
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            XCTFail("取消后不应返回账号数据")
+        } catch {
+            XCTAssertLessThan(Date().timeIntervalSince(started), 2.0)
+        }
+    }
 }

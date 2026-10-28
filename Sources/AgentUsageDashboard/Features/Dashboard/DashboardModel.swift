@@ -3,8 +3,6 @@ import Combine
 
 /// 应用状态与用例编排：发布 Provider 快照、刷新状态、历史和错误，
 /// 通过注入的 adapter 刷新、通过 repository 持久化。
-/// 应用状态与用例编排：发布 Provider 快照、刷新状态、历史和错误，
-/// 通过注入的 adapter 刷新、通过 repository 持久化。
 @MainActor
 final class DashboardModel: ObservableObject {
     /// 各 Provider 快照字典存储，支持动态接入扩展 Agent 快照
@@ -41,7 +39,7 @@ final class DashboardModel: ObservableObject {
     // MARK: - 本地环境与工具链检测状态
     @Published private(set) var localTools: [LocalToolEnvironment] = []
     @Published private(set) var isDetectingEnv = false
-    private let environmentInspector = LocalEnvironmentInspector()
+    private let environmentInspector: any LocalEnvironmentInspecting
 
     private let repository: SnapshotRepository
     private let settingsStore: ProviderSettingsStore
@@ -54,11 +52,13 @@ final class DashboardModel: ObservableObject {
         repository: SnapshotRepository,
         settingsStore: ProviderSettingsStore,
         watcherFactory: @escaping (@escaping () -> Void) -> [DirectoryWatcher],
-        debounceNanoseconds: UInt64 = 1_000_000_000
+        debounceNanoseconds: UInt64 = 1_000_000_000,
+        environmentInspector: (any LocalEnvironmentInspecting)? = nil
     ) {
         self.repository = repository
         self.settingsStore = settingsStore
         self.watcherFactory = watcherFactory
+        self.environmentInspector = environmentInspector ?? LocalEnvironmentInspector()
         self.coordinator = RefreshCoordinator(
             adapters: adapters,
             debounceNanoseconds: debounceNanoseconds

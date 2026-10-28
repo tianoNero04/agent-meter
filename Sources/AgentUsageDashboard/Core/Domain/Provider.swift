@@ -18,10 +18,27 @@ enum Provider: String, Codable, CaseIterable, Identifiable, Hashable, Sendable {
     case pi = "pi"
     case ollama = "ollama"
 
-    /// 内置核心官方提供商列表
     static let coreProviders: [Provider] = [.codex, .kimiCode]
+    static let supportedProviders: [Provider] = coreProviders + [.antigravity]
 
     var id: String { rawValue }
+
+    var vendorName: String {
+        switch self {
+        case .codex: return "OpenAI"
+        case .kimiCode: return "Moonshot AI"
+        case .antigravity: return "Google"
+        case .claude: return "Anthropic"
+        case .cursor: return "Anysphere"
+        case .vscode: return "GitHub / Microsoft"
+        case .grok: return "xAI"
+        case .opencode: return "OpenCode AI"
+        case .openclaw: return "OpenClaw"
+        case .hermes: return "Nous Research"
+        case .pi: return "Inflection / Pi Agent"
+        case .ollama: return "Ollama"
+        }
+    }
 
     /// 映射 LocalToolEnvironment 的标识符
     var toolId: String {

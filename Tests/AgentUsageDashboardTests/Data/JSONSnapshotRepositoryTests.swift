@@ -62,7 +62,7 @@ final class JSONSnapshotRepositoryTests: XCTestCase {
         XCTAssertNil(repository.load())
     }
 
-    func testLoadPrunesLocalDailyBucketsOutsideThirtyDayWindow() throws {
+    func testSaveAndLoadPruneLocalDailyBucketsOutsideThirtyDayWindow() throws {
         let (repository, directory) = try makeRepository()
         defer { try? FileManager.default.removeItem(at: directory) }
 
@@ -76,6 +76,13 @@ final class JSONSnapshotRepositoryTests: XCTestCase {
         ]
 
         repository.save(current: snapshot, history: [snapshot])
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let rawData = try Data(contentsOf: directory.appendingPathComponent("snapshots.json"))
+        let rawPersisted = try decoder.decode(PersistedDashboard.self, from: rawData)
+        XCTAssertEqual(rawPersisted.current.providers[0].localDailyBuckets.count, 1)
+        XCTAssertEqual(rawPersisted.history.first?.providers[0].localDailyBuckets.count, 1)
 
         let loaded = repository.load()
         XCTAssertEqual(loaded?.current.providers[0].localDailyBuckets, [

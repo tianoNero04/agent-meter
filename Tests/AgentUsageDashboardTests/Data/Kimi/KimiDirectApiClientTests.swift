@@ -111,6 +111,37 @@ final class KimiDirectApiClientTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(secondary?.remainingPercent), 76.4429, accuracy: 0.001) // 剩余准确为 76.44%
     }
 
+    func testParseUsagesResponseDoesNotMislabelOtherLimitAsFiveHourWindow() throws {
+        let data = """
+        {
+          "limits": [
+            {
+              "window": { "duration": 60 },
+              "detail": { "limit": "100", "used": "25" }
+            },
+            {
+              "window": { "duration": 300 },
+              "detail": { "limit": "100", "used": "50" }
+            }
+          ]
+        }
+        """.data(using: .utf8)!
+
+        let result = try KimiDirectApiClient.parseUsagesResponse(data: data, nickname: nil)
+
+        XCTAssertEqual(result.windows.count, 1)
+        XCTAssertEqual(result.windows.first?.windowMinutes, 300)
+        XCTAssertEqual(result.windows.first?.usedPercent, 50)
+    }
+
+    func testParseUsagesResponseRejectsResponseWithoutQuotaWindows() {
+        let data = #"{"user":{"userId":"user-123"}}"#.data(using: .utf8)!
+
+        XCTAssertThrowsError(try KimiDirectApiClient.parseUsagesResponse(data: data, nickname: nil)) { error in
+            XCTAssertEqual(error as? KimiDirectApiError, .invalidResponseData)
+        }
+    }
+
     /// 验证从本地 JSON 提取 access_token 与 refresh_token
     func testParseCredentialsJsonExtractsTokens() throws {
         let jsonString = """
@@ -129,6 +160,57 @@ final class KimiDirectApiClientTests: XCTestCase {
         XCTAssertEqual(creds.expiresAt, 1788396886)
     }
 
+    func testCancellationDuringOptionalNicknameRequestDoesNotReturnSuccess() async throws {
+        KimiURLProtocol.blockedPath = "/coding/v1/me"
+        defer { KimiURLProtocol.blockedPath = nil }
+        let (root, client) = try makeNetworkClient(expiresAt: Int(Date().timeIntervalSince1970) + 3600)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let task = Task { try await client.fetch() }
+        try await Task.sleep(nanoseconds: 50_000_000)
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            XCTFail("取消后不应返回账号数据")
+        } catch {
+            XCTAssertTrue(error is CancellationError || (error as NSError).code == NSURLErrorCancelled)
+        }
+    }
+
+    func testCancellationDuringTokenRefreshIsNotMappedToNetworkError() async throws {
+        KimiURLProtocol.blockedPath = "/api/oauth/token"
+        KimiURLProtocol.requestPaths = []
+        defer { KimiURLProtocol.blockedPath = nil }
+        let (root, client) = try makeNetworkClient(expiresAt: 0)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let task = Task { try await client.fetch() }
+        try await Task.sleep(nanoseconds: 50_000_000)
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            XCTFail("取消后不应返回账号数据")
+        } catch {
+            XCTAssertTrue(error is CancellationError || (error as NSError).code == NSURLErrorCancelled)
+        }
+        XCTAssertFalse(KimiURLProtocol.requestPaths.contains { $0.contains("/coding/v1/usages") })
+    }
+
+    private func makeNetworkClient(expiresAt: Int) throws -> (URL, KimiDirectApiClient) {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("kimi-network-\(UUID().uuidString)", isDirectory: true)
+        let credentials = root.appendingPathComponent(".kimi-code/credentials", isDirectory: true)
+        try FileManager.default.createDirectory(at: credentials, withIntermediateDirectories: true)
+        let json = #"{"access_token":"access-token","refresh_token":"refresh-token","expires_at":"EXPIRES"}"#
+            .replacingOccurrences(of: "\"EXPIRES\"", with: String(expiresAt))
+        try json.write(to: credentials.appendingPathComponent("kimi-code.json"), atomically: true, encoding: .utf8)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [KimiURLProtocol.self]
+        return (root, KimiDirectApiClient(homeURL: root, session: URLSession(configuration: configuration)))
+    }
+
     /// 验证凭据文件缺失时抛出明确错误
     func testMissingCredentialsThrowsNotFound() {
         let tempDir = FileManager.default.temporaryDirectory
@@ -142,4 +224,27 @@ final class KimiDirectApiClientTests: XCTestCase {
             XCTAssertEqual(directErr, .credentialNotFound)
         }
     }
+}
+
+private final class KimiURLProtocol: URLProtocol {
+    nonisolated(unsafe) static var blockedPath: String?
+    nonisolated(unsafe) static var requestPaths: [String] = []
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        guard let url = request.url else { return }
+        Self.requestPaths.append(url.path)
+        if let blockedPath = Self.blockedPath, url.path.contains(blockedPath) { return }
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        let body = url.path.contains("/coding/v1/usages")
+            ? #"{"usages":{"limit_5h":{"used_ratio":0.25}}}"#
+            : #"{"nickname":"Fixture"}"#
+        client?.urlProtocol(self, didLoad: Data(body.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
 }

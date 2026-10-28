@@ -17,20 +17,21 @@ private struct PreviewRepository: SnapshotRepository {
 }
 
 private struct PreviewSettingsStore: ProviderSettingsStore {
-    func load() -> ProviderPreferences { ProviderPreferences() }
+    var preferences = ProviderPreferences()
+    func load() -> ProviderPreferences { preferences }
     func save(_ preferences: ProviderPreferences) {}
 }
 
 @MainActor
 enum PreviewModels {
-    static func dashboard() -> DashboardModel {
+    static func dashboard(preferences: ProviderPreferences = ProviderPreferences()) -> DashboardModel {
         DashboardModel(
             adapters: [
                 PreviewAdapter(provider: .codex, snapshot: codexSnapshot),
                 PreviewAdapter(provider: .kimiCode, snapshot: kimiSnapshot)
             ],
             repository: PreviewRepository(),
-            settingsStore: PreviewSettingsStore(),
+            settingsStore: PreviewSettingsStore(preferences: preferences),
             watcherFactory: { _ in [] }
         )
     }
@@ -78,6 +79,40 @@ enum PreviewModels {
 
 #Preview("菜单栏弹窗") {
     PopoverView(model: PreviewModels.dashboard())
+        .frame(width: 390, height: 425)
+}
+
+#Preview("弹窗 · 长账号与刷新错误") {
+    var snapshot = PreviewModels.codexSnapshot
+    snapshot.account = AccountIdentity(
+        planType: "professional-workspace",
+        email: "developer-with-a-long-address@example.com"
+    )
+    snapshot.errorMessage = "账号接口暂时不可用，已保留上一次成功查询的额度数据"
+    return ProviderPanel(snapshot: snapshot, isRefreshing: false, lastRefresh: Date(), refresh: {})
+        .frame(width: 366, height: 340)
+        .padding()
+        .background(AppTheme.background)
+}
+
+#Preview("额度 · 多窗口与刷新中") {
+    var snapshot = PreviewModels.codexSnapshot
+    snapshot.windows.append(RateLimitWindow(
+        id: "codex.additional",
+        usedPercent: 12,
+        windowMinutes: 300,
+        resetsAt: Date().addingTimeInterval(3600),
+        name: "附加模型 · 5 小时"
+    ))
+    return QuotaCard(snapshot: snapshot, isRefreshing: true, lastRefresh: Date(), refresh: {})
+        .frame(width: 366, height: 154)
+        .padding()
+        .background(AppTheme.background)
+}
+
+#Preview("弹窗 · 零可见服务商") {
+    let preferences = ProviderPreferences(enabledProviders: [], selectedProvider: nil)
+    PopoverView(model: PreviewModels.dashboard(preferences: preferences))
         .frame(width: 390, height: 425)
 }
 
