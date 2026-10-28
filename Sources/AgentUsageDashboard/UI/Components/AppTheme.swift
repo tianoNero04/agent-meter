@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 瑞士国际主义：中性黑灰、绿色功能强调、纯色平面构成。
+/// 中性黑灰、绿色功能强调与账号卡片光感颜色。
 enum AppTheme {
     static let background = Color(white: 17.0 / 255) // #111111
     static let surface = Color(white: 25.0 / 255) // #191919
@@ -13,6 +13,9 @@ enum AppTheme {
     static let accent = Color(red: 61.0 / 255, green: 214.0 / 255, blue: 140.0 / 255) // #3DD68C
     static let accentBorder = accent
     static let selection = Color(red: 19.0 / 255, green: 45.0 / 255, blue: 33.0 / 255)
+    static let heroBackground = Color(red: 5.0 / 255, green: 15.0 / 255, blue: 15.0 / 255)
+    static let heroGreen = Color(red: 18.0 / 255, green: 92.0 / 255, blue: 66.0 / 255)
+    static let heroLight = Color(red: 166.0 / 255, green: 250.0 / 255, blue: 211.0 / 255)
     static let success = accent
     static let warning = Color(red: 1, green: 0.72, blue: 0.35)
     // 用量构成以明度与文字标签区分，缓存保留品牌绿。

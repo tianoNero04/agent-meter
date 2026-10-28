@@ -4,9 +4,7 @@ import SwiftUI
 struct ProviderIconTile: View {
     let provider: Provider
     let size: CGFloat
-
-    // 采用硬朗几何微圆角
-    private var cornerRadius: CGFloat { AppTheme.geometricRadius }
+    var cornerRadius: CGFloat = AppTheme.geometricRadius
 
     var body: some View {
         ZStack {

@@ -43,11 +43,11 @@ struct ProviderHeroCard: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ProviderIconTile(provider: snapshot.provider, size: 44)
+            ProviderIconTile(provider: snapshot.provider, size: 44, cornerRadius: 10)
             VStack(alignment: .leading, spacing: 3.5) {
                 Text(snapshot.provider.displayName.uppercased())
-                    .font(.system(size: 16.5, weight: .semibold))
-                    .tracking(0.8)
+                    .font(.system(size: 18, weight: .bold))
+                    .tracking(0.5)
                     .foregroundStyle(AppTheme.primaryText)
                 Text(heroDetail)
                     .font(.system(size: 11, weight: .medium))
@@ -59,37 +59,33 @@ struct ProviderHeroCard: View {
             .help(heroDetail)
             .accessibilityLabel(heroDetail)
 
-            VStack(alignment: .trailing, spacing: 3) {
-                Text("订阅")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(AppTheme.tertiaryText)
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(statusColor)
-                        .frame(width: 4.5, height: 4.5)
-                    Text(planLabel)
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(snapshot.account == nil ? AppTheme.secondaryText : AppTheme.primaryText)
-                        .lineLimit(1)
-                        .frame(maxWidth: 104, alignment: .trailing)
-                }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4)
-                .background(
-                    RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-                        .fill(AppTheme.elevated)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-                                .stroke(AppTheme.hairlineBright, lineWidth: 0.75)
-                        )
-                )
-                .help(planLabel)
+            HStack(spacing: 10) {
+                Text(planLabel)
+                    .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(snapshot.account == nil ? AppTheme.secondaryText : AppTheme.primaryText)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(width: min(CGFloat(planLabel.count) * 7.2, 88), alignment: .trailing)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(AppTheme.heroLight.opacity(0.8))
+                    .accessibilityHidden(true)
             }
+            .padding(.horizontal, 12)
+            .frame(height: 30)
+            .background(AppTheme.heroGreen.opacity(0.12), in: Capsule())
+            .overlay(Capsule().stroke(AppTheme.heroLight.opacity(0.30), lineWidth: 0.75))
+            .help(planLabel)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(height: 74)
-        .panelBackground()
+        .background(HeroAuroraBackground())
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(AppTheme.heroLight.opacity(0.18), lineWidth: 0.75)
+        )
     }
 
     private var heroDetail: String {
@@ -112,10 +108,58 @@ struct ProviderHeroCard: View {
         guard let plan = snapshot.account?.planType, !plan.isEmpty else { return "未获取" }
         return plan.uppercased()
     }
+}
 
-    private var statusColor: Color {
-        if snapshot.errorMessage != nil { return AppTheme.warning }
-        return snapshot.account == nil ? AppTheme.tertiaryText : AppTheme.accent
+private struct HeroAuroraBackground: View {
+    var body: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height
+            ZStack {
+                LinearGradient(
+                    colors: [AppTheme.heroBackground, AppTheme.heroGreen.opacity(0.48)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                RadialGradient(
+                    colors: [AppTheme.heroLight.opacity(0.72), AppTheme.accent.opacity(0.20), .clear],
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: width * 0.34
+                )
+                .frame(width: width * 0.72, height: height * 2.8)
+                .position(x: width * 0.98, y: -height * 0.34)
+                .blur(radius: 12)
+                .blendMode(.screen)
+                auroraPath(width: width, height: height)
+                    .stroke(AppTheme.accent.opacity(0.30), style: StrokeStyle(lineWidth: 28, lineCap: .round))
+                    .blur(radius: 16)
+                    .blendMode(.screen)
+                auroraPath(width: width, height: height)
+                    .stroke(AppTheme.heroLight.opacity(0.16), style: StrokeStyle(lineWidth: 7, lineCap: .round))
+                    .blur(radius: 5)
+                auroraPath(width: width, height: height)
+                    .stroke(AppTheme.heroLight.opacity(0.38), lineWidth: 0.7)
+                LinearGradient(
+                    colors: [AppTheme.heroBackground.opacity(0.82), AppTheme.heroBackground.opacity(0.30), .clear],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: width * 0.66)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private func auroraPath(width: CGFloat, height: CGFloat) -> Path {
+        Path { path in
+            path.move(to: CGPoint(x: width * 0.52, y: height * 1.18))
+            path.addCurve(
+                to: CGPoint(x: width * 1.05, y: -height * 0.18),
+                control1: CGPoint(x: width * 0.67, y: height * 0.58),
+                control2: CGPoint(x: width * 0.82, y: height * 0.43)
+            )
+        }
     }
 }
 
