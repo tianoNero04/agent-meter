@@ -117,70 +117,71 @@ private struct HeroAuroraBackground: View {
             let width = proxy.size.width
             let height = proxy.size.height
             ZStack {
+                // Keep the reading area dark; concentrate illumination in the upper right.
+                LinearGradient(
+                    colors: [AppTheme.heroBackground, AppTheme.heroDeepTeal],
+                    startPoint: .leading, endPoint: .trailing
+                )
+                RadialGradient(
+                    stops: [
+                        .init(color: AppTheme.heroLight, location: 0),
+                        .init(color: AppTheme.heroMint, location: 0.12),
+                        .init(color: AppTheme.heroMint.opacity(0.64), location: 0.30),
+                        .init(color: AppTheme.heroMint.opacity(0.16), location: 0.62),
+                        .init(color: .clear, location: 1)
+                    ],
+                    center: UnitPoint(x: 0.99, y: -0.10),
+                    startRadius: 0, endRadius: width * 0.55
+                )
+                // A dark lower plane gives the light a crisp curved boundary, not a blurred stripe.
+                lowerPlane(width: width, height: height)
+                    .fill(LinearGradient(
+                        stops: [
+                            .init(color: AppTheme.heroDeepTeal.opacity(0.05), location: 0),
+                            .init(color: AppTheme.heroDeepTeal.opacity(0.86), location: 0.48),
+                            .init(color: AppTheme.heroBackground, location: 1)
+                        ],
+                        startPoint: .top, endPoint: .bottom
+                    ))
+                auroraPath(width: width, height: height)
+                    .stroke(AppTheme.heroMint.opacity(0.55), lineWidth: 0.45)
+                // Secondary light emerges at the bottom where the curve enters the card.
+                RadialGradient(
+                    colors: [AppTheme.heroMint.opacity(0.55), .clear],
+                    center: UnitPoint(x: 0.56, y: 1.14),
+                    startRadius: 0, endRadius: width * 0.17
+                )
                 LinearGradient(
                     stops: [
-                        .init(color: AppTheme.heroBackground, location: 0),
-                        .init(color: AppTheme.heroGreen.opacity(0.48), location: 0.48),
-                        .init(color: AppTheme.heroGreen.opacity(0.86), location: 1)
+                        .init(color: AppTheme.heroBackground.opacity(0.75), location: 0),
+                        .init(color: AppTheme.heroBackground.opacity(0.52), location: 0.40),
+                        .init(color: .clear, location: 0.67)
                     ],
-                    startPoint: .leading,
-                    endPoint: .trailing
+                    startPoint: .leading, endPoint: .trailing
                 )
-                RadialGradient(
-                    colors: [AppTheme.heroGreen.opacity(0.72), AppTheme.heroGreen.opacity(0.18), .clear],
-                    center: .topTrailing,
-                    startRadius: 0,
-                    endRadius: width * 0.58
-                )
-                .blur(radius: 18)
-                RadialGradient(
-                    colors: [AppTheme.heroLight.opacity(0.95), AppTheme.accent.opacity(0.46), AppTheme.heroGreen.opacity(0.12), .clear],
-                    center: .center,
-                    startRadius: 0,
-                    endRadius: width * 0.46
-                )
-                .frame(width: width * 1.08, height: height * 3.6)
-                .position(x: width * 1.02, y: -height * 0.22)
-                .blur(radius: 18)
-                .blendMode(.screen)
-                auroraPath(width: width, height: height)
-                    .stroke(AppTheme.heroGreen.opacity(0.78), style: StrokeStyle(lineWidth: 56, lineCap: .round))
-                    .blur(radius: 24)
-                    .blendMode(.screen)
-                auroraPath(width: width, height: height)
-                    .stroke(AppTheme.accent.opacity(0.24), style: StrokeStyle(lineWidth: 30, lineCap: .round))
-                    .blur(radius: 18)
-                    .blendMode(.screen)
-                auroraPath(width: width, height: height)
-                    .stroke(AppTheme.heroLight.opacity(0.20), style: StrokeStyle(lineWidth: 11, lineCap: .round))
-                    .blur(radius: 8)
-                auroraPath(width: width, height: height)
-                    .stroke(AppTheme.heroLight.opacity(0.26), lineWidth: 0.6)
-                LinearGradient(
-                    colors: [.clear, AppTheme.heroBackground.opacity(0.42)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                LinearGradient(
-                    colors: [AppTheme.heroBackground.opacity(0.82), AppTheme.heroBackground.opacity(0.30), .clear],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(width: width * 0.66)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .clipped()
         }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     private func auroraPath(width: CGFloat, height: CGFloat) -> Path {
         Path { path in
-            path.move(to: CGPoint(x: width * 0.52, y: height * 1.18))
+            path.move(to: CGPoint(x: width * 0.56, y: height * 1.02))
             path.addCurve(
-                to: CGPoint(x: width * 1.05, y: -height * 0.18),
-                control1: CGPoint(x: width * 0.67, y: height * 0.58),
-                control2: CGPoint(x: width * 0.82, y: height * 0.43)
+                to: CGPoint(x: width * 1.02, y: -height * 0.08),
+                control1: CGPoint(x: width * 0.68, y: height * 0.20),
+                control2: CGPoint(x: width * 0.89, y: height * 0.42)
             )
         }
+    }
+
+    private func lowerPlane(width: CGFloat, height: CGFloat) -> Path {
+        var path = auroraPath(width: width, height: height)
+        path.addLine(to: CGPoint(x: width * 1.02, y: height * 1.02))
+        path.closeSubpath()
+        return path
     }
 }
 

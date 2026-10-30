@@ -14,6 +14,8 @@ enum AppTheme {
     static let accentBorder = accent
     static let selection = Color(red: 19.0 / 255, green: 45.0 / 255, blue: 33.0 / 255)
     static let heroBackground = Color(red: 5.0 / 255, green: 15.0 / 255, blue: 15.0 / 255)
+    static let heroDeepTeal = Color(red: 3.0 / 255, green: 42.0 / 255, blue: 34.0 / 255)
+    static let heroMint = Color(red: 28.0 / 255, green: 224.0 / 255, blue: 170.0 / 255)
     static let heroGreen = Color(red: 20.0 / 255, green: 105.0 / 255, blue: 67.0 / 255)
     static let heroLight = Color(red: 166.0 / 255, green: 250.0 / 255, blue: 211.0 / 255)
     static let success = accent
