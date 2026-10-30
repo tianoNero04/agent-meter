@@ -9,17 +9,11 @@ struct RateLimitRow: View {
         HStack(spacing: 8) {
             QuotaRowIcon(windowMinutes: window.windowMinutes)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(window.label)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(AppTheme.primaryText)
-                    .lineLimit(1)
-                Text(subtitle)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(AppTheme.secondaryText.opacity(0.72))
-                    .lineLimit(1)
-            }
-            .frame(width: 55, alignment: .leading)
+            Text(window.label)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppTheme.primaryText)
+                .lineLimit(1)
+                .frame(width: 43, alignment: .leading)
 
             Group {
                 if window.windowMinutes == 10080 {
@@ -36,8 +30,8 @@ struct RateLimitRow: View {
                     .monospacedDigit()
                     .foregroundStyle(AppTheme.primaryText)
                 resetDetail
-                    .font(.system(size: 8.5, weight: .medium))
-                    .foregroundStyle(AppTheme.secondaryText.opacity(0.76))
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(AppTheme.secondaryText.opacity(0.95))
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
             }
@@ -47,14 +41,6 @@ struct RateLimitRow: View {
         .frame(height: 49)
         .background(AppTheme.heroLight.opacity(0.025), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
         .accessibilityElement(children: .combine)
-    }
-
-    private var subtitle: String {
-        switch window.windowMinutes {
-        case 300: return "本次对话额度"
-        case 10080: return "周度使用额度"
-        default: return "账号使用额度"
-        }
     }
 
     @ViewBuilder
@@ -105,7 +91,7 @@ struct SwissSegmentedGauge: View {
                 ForEach(0..<totalSegments, id: \.self) { index in
                     let isFilled = index < filledCount
                     RoundedRectangle(cornerRadius: 3, style: .continuous)
-                        .fill(isFilled ? accent.opacity(0.64 + 0.36 * Double(index) / Double(totalSegments - 1)) : AppTheme.heroLight.opacity(0.055))
+                        .fill(isFilled ? AppTheme.heroMint.opacity(0.55 + 0.45 * Double(index) / Double(totalSegments - 1)) : AppTheme.heroLight.opacity(0.055))
                         .overlay {
                             if isFilled && index == filledCount - 1 {
                                 RoundedRectangle(cornerRadius: 3, style: .continuous)
@@ -140,7 +126,13 @@ private struct ContinuousQuotaGauge: View {
                                 startPoint: .leading,
                                 endPoint: .trailing
                             ))
-                            .frame(width: max(10, proxy.size.width * fraction))
+                            .frame(width: min(proxy.size.width, max(10, proxy.size.width * fraction)))
+                            .overlay(alignment: .trailing) {
+                                Circle()
+                                    .fill(AppTheme.heroLight)
+                                    .frame(width: 6, height: 6)
+                                    .padding(.trailing, 2)
+                            }
                             .shadow(color: accent.opacity(0.48), radius: 4)
                     }
                 }

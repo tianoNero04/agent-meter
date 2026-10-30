@@ -1,90 +1,106 @@
 import SwiftUI
 
-/// 瑞士风格 Provider 图标导航栏组件：以紧凑高质感的微缩图标呈现提供者切换
+/// Compact provider menu with a softly illuminated leading edge.
 struct ProviderNavigationBar: View {
     @ObservedObject var model: DashboardModel
     @Binding var selection: PopoverSection
     let onSelect: (Provider) -> Void
-    @Namespace private var tabNamespace
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        HStack(spacing: 9) {
-            ForEach(model.navigation.visibleProviders, id: \.self) { provider in
-                ProviderIconTab(
-                    provider: provider,
-                    isSelected: selection == .provider(provider),
-                    namespace: tabNamespace
-                ) {
-                    onSelect(provider)
-                }
-            }
-        }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.20), value: selection)
-    }
-}
-
-/// 单项微缩图标切换按钮
-struct ProviderIconTab: View {
-    let provider: Provider
-    let isSelected: Bool
-    let namespace: Namespace.ID
-    let action: () -> Void
-
     @State private var isHovered = false
 
-    // 严谨等宽等高的 24x24 几何微方块
-    private let tabSize: CGFloat = 24
+    private var selectedProvider: Provider? {
+        guard case let .provider(provider) = selection,
+              model.navigation.visibleProviders.contains(provider) else {
+            return model.navigation.visibleProviders.first
+        }
+        return provider
+    }
 
     var body: some View {
-        Button(action: action) {
-            ZStack {
-                // Provider 专属高清图标或暗黑方块底衬
-                if let icon = BundleImages.providerIcon(for: provider) {
-                    Image(nsImage: icon)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: tabSize, height: tabSize)
-                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous))
-                        .opacity(isSelected ? 1.0 : (isHovered ? 0.9 : 0.6))
-                } else {
-                    // 与位图图标统一形态的暗黑方块底衬
-                    RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-                        .fill(AppTheme.elevated)
-                        .frame(width: tabSize, height: tabSize)
-
-                    Image(systemName: provider.iconName)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(isSelected ? AppTheme.primaryText : AppTheme.secondaryText)
-                        .opacity(isSelected ? 1.0 : (isHovered ? 0.9 : 0.6))
-                }
-
-                // 选中态高能绿色边框高光
-                if isSelected {
-                    SelectedTabChip()
-                        .matchedGeometryEffect(id: "selectedTab", in: namespace)
-                } else if isHovered {
-                    RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-                        .stroke(AppTheme.hairlineBright, lineWidth: 0.75)
+        Menu {
+            ForEach(model.navigation.visibleProviders, id: \.self) { provider in
+                Button {
+                    onSelect(provider)
+                } label: {
+                    if provider == selectedProvider {
+                        Label(provider.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(provider.displayName)
+                    }
                 }
             }
-            .frame(width: tabSize, height: tabSize)
-            .contentShape(Rectangle())
+        } label: {
+            Text("").frame(width: 146, height: 36)
         }
-        .buttonStyle(.plain)
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .frame(width: 146, height: 36)
+        .overlay { selectorLabel.allowsHitTesting(false) }
+        .disabled(model.navigation.visibleProviders.isEmpty)
         .onHover { isHovered = $0 }
-        .help(provider.displayName)
-        .accessibilityLabel(provider.displayName)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityLabel("选择服务商")
+        .accessibilityValue(selectedProvider?.displayName ?? "未启用服务商")
+        .help("切换服务商")
     }
-}
 
-/// 选中态平面构成主义指示框：与方块图标完全等大的绿色发丝反光边框
-struct SelectedTabChip: View {
-    var body: some View {
-        RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-            .stroke(AppTheme.accentBorder, lineWidth: 1.0)
+    private var selectorLabel: some View {
+            HStack(spacing: 9) {
+                icon
+                Text(selectedProvider?.displayName ?? "服务商")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(AppTheme.primaryText)
+                    .padding(.trailing, 9)
+            }
+            .padding(.leading, 5)
+            .frame(width: 146, height: 36)
+            .background {
+                Capsule()
+                    .fill(AppTheme.heroBackground)
+                    .overlay {
+                        Capsule().fill(LinearGradient(
+                            colors: [AppTheme.heroMint.opacity(isHovered ? 0.40 : 0.26), .clear],
+                            startPoint: .leading, endPoint: UnitPoint(x: 0.48, y: 0.5)
+                        ))
+                    }
+                    .overlay {
+                        Capsule().strokeBorder(LinearGradient(
+                            colors: [AppTheme.heroMint.opacity(0.9), AppTheme.heroMint.opacity(0.13), AppTheme.heroMint.opacity(0.28)],
+                            startPoint: .leading, endPoint: .trailing
+                        ), lineWidth: 0.75)
+                    }
+                    .allowsHitTesting(false)
+            }
+            .contentShape(Capsule())
+    }
 
+    private var icon: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(AppTheme.heroBackground)
+            if let provider = selectedProvider {
+                if let image = BundleImages.providerIcon(for: provider) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .padding(3)
+                } else {
+                    Image(systemName: provider.iconName)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(AppTheme.primaryText)
+                }
+            }
+        }
+        .frame(width: 28, height: 28)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(AppTheme.heroMint.opacity(0.22), lineWidth: 0.75)
+        }
+        .accessibilityHidden(true)
     }
 }
 

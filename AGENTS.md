@@ -70,7 +70,7 @@ UI 样式约定：遵循根目录 `DESIGN.md` 的瑞士国际主义、极简扁�
 
 ## 测试要求
 
-- 菜单栏鼠标交互回归：运行打包后的 App，启用 Codex、Kimi Code、Antigravity 并打开弹窗，再执行 `bash Scripts/test-provider-navigation.sh`。终端需辅助功能权限；脚本通过真实鼠标事件点击按钮并检查内容切换，不以辅助功能直接执行按钮动作代替命中测试。测试期间保持弹窗打开。
+- 菜单栏鼠标交互回归：运行打包后的 App，启用 Codex、Kimi Code、Antigravity 并打开弹窗，再执行 `bash Scripts/test-provider-navigation.sh`。终端需辅助功能权限；脚本通过真实鼠标事件打开服务商胶囊菜单，再选择菜单项并检查内容切换，不以辅助功能直接展开菜单代替入口命中测试。测试期间保持弹窗打开。
 - 超出容器边界的装饰背景必须禁用命中测试；`clipShape` 只约束绘制，不应依赖它阻止装饰层拦截相邻控件点击。
 
 - 测试使用临时目录、fixture 和 fake（`Tests/AgentUsageDashboardTests/Support/TestFakes.swift`），不依赖真实账号、用户目录或网络。

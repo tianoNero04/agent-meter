@@ -249,8 +249,8 @@ struct QuotaCard: View {
                     pageControls
                 } else if let lastRefresh {
                     Text("最后更新 \(lastRefresh.formatted(date: .omitted, time: .shortened))")
-                        .font(.system(size: 8.5, weight: .medium))
-                        .foregroundStyle(AppTheme.secondaryText.opacity(0.58))
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText)
                         .help("最近刷新：\(lastRefresh.formatted())")
                 }
 
@@ -260,9 +260,10 @@ struct QuotaCard: View {
                             ProgressView()
                                 .controlSize(.mini)
                         } else {
-                            RefreshIconShape()
-                                .fill(AppTheme.heroLight)
-                                .shadow(color: AppTheme.accent.opacity(0.55), radius: 4)
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(AppTheme.heroMint)
+                                .shadow(color: AppTheme.heroMint.opacity(0.65), radius: 3)
                         }
                     }
                     .frame(width: 14, height: 14)

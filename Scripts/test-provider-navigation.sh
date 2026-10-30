@@ -2,13 +2,11 @@
 # Native UI smoke test. Open the menu popover with all three providers enabled first.
 # Requires Accessibility permission for the terminal running this script.
 set -euo pipefail
-for spec in '2 CODEX' '3 KIMI CODE' '4 ANTIGRAVITY'; do
-  index="${spec%% *}"
-  expected="${spec#* }"
-  point=$(osascript - "$index" <<'APPLESCRIPT'
+for expected in 'CODEX' 'KIMI CODE' 'ANTIGRAVITY'; do
+  point=$(osascript <<'APPLESCRIPT'
 on run argv
   tell application "System Events" to tell process "AgentUsageDashboard"
-    set targetButton to button (item 1 of argv as integer) of group 1 of window 1
+    set targetButton to pop up button 1 of group 1 of window 1
     set {x, y} to position of targetButton
     set {w, h} to size of targetButton
     return ((x + w / 2) as integer as text) & "," & ((y + h / 2) as integer as text)
@@ -20,6 +18,11 @@ APPLESCRIPT
   osascript - "$expected" <<'APPLESCRIPT'
 on run argv
   tell application "System Events" to tell process "AgentUsageDashboard"
+    set providerName to item 1 of argv
+    if providerName is "CODEX" then set providerName to "Codex"
+    if providerName is "KIMI CODE" then set providerName to "Kimi Code"
+    if providerName is "ANTIGRAVITY" then set providerName to "Antigravity"
+    click menu item providerName of menu 1 of pop up button 1 of group 1 of window 1
     repeat 20 times
       if (value of every static text of group 1 of window 1) contains (item 1 of argv) then return
       delay 0.1
