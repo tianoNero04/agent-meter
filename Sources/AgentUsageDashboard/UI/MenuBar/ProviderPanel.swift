@@ -80,7 +80,8 @@ struct ProviderHeroCard: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(height: 74)
-        .background(HeroAuroraBackground())
+        // Decorative gradients extend beyond the card; clipping does not constrain hit testing.
+        .background(HeroAuroraBackground().allowsHitTesting(false))
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
