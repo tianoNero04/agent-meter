@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 中性黑灰、绿色功能强调与账号卡片光感颜色。
+/// 中性黑灰、绿色功能强调与账号、额度卡片光感颜色。
 enum AppTheme {
     static let background = Color(white: 17.0 / 255) // #111111
     static let surface = Color(white: 25.0 / 255) // #191919

@@ -185,6 +185,34 @@ private struct HeroAuroraBackground: View {
     }
 }
 
+private struct QuotaAuroraBackground: View {
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                LinearGradient(
+                    colors: [AppTheme.heroBackground, AppTheme.heroDeepTeal.opacity(0.58)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                RadialGradient(
+                    colors: [AppTheme.heroMint.opacity(0.17), AppTheme.heroGreen.opacity(0.08), .clear],
+                    center: UnitPoint(x: 0.94, y: 0.02),
+                    startRadius: 0,
+                    endRadius: proxy.size.width * 0.64
+                )
+                RadialGradient(
+                    colors: [AppTheme.heroGreen.opacity(0.10), .clear],
+                    center: UnitPoint(x: 0.04, y: 0.52),
+                    startRadius: 0,
+                    endRadius: proxy.size.width * 0.36
+                )
+            }
+            .clipped()
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 private struct PressBounceButtonStyle: ButtonStyle {
     let reduceMotion: Bool
 
@@ -211,43 +239,35 @@ struct QuotaCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center, spacing: 6) {
+            HStack(alignment: .center, spacing: 8) {
                 Text("剩余额度")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(AppTheme.primaryText)
                 Spacer(minLength: 4)
 
                 if pages.count > 1 {
                     pageControls
                 } else if let lastRefresh {
-                    Text(lastRefresh.formatted(date: .omitted, time: .shortened))
-                        .font(.system(size: 11))
-                        .foregroundStyle(AppTheme.tertiaryText)
+                    Text("最后更新 \(lastRefresh.formatted(date: .omitted, time: .shortened))")
+                        .font(.system(size: 8.5, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText.opacity(0.58))
                         .help("最近刷新：\(lastRefresh.formatted())")
                 }
 
                 Button(action: refresh) {
-                    HStack(spacing: 4) {
+                    Group {
                         if isRefreshing {
                             ProgressView()
                                 .controlSize(.mini)
-                                .frame(width: 9, height: 9)
                         } else {
                             RefreshIconShape()
-                                .fill(AppTheme.accent)
-                                .frame(width: 8.5, height: 8.5)
+                                .fill(AppTheme.heroLight)
+                                .shadow(color: AppTheme.accent.opacity(0.55), radius: 4)
                         }
-                        Text(isRefreshing ? "查询中" : "刷新")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(AppTheme.accent)
                     }
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3.5)
-                    .background(AppTheme.elevated, in: RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-                            .stroke(AppTheme.accentBorder, lineWidth: 0.75)
-                    )
+                    .frame(width: 14, height: 14)
+                    .padding(5)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(PressBounceButtonStyle(reduceMotion: reduceMotion))
                 .disabled(isRefreshing)
@@ -255,13 +275,8 @@ struct QuotaCard: View {
                 .help("刷新账号额度")
                 .accessibilityLabel(isRefreshing ? "正在刷新账号额度" : "刷新账号额度")
             }
-            .padding(.horizontal, 12)
-            .frame(height: 32)
-
-            Rectangle()
-                .fill(AppTheme.hairline)
-                .frame(height: 0.75)
-                .padding(.horizontal, 12)
+            .padding(.horizontal, 13)
+            .frame(height: 36)
 
             if snapshot.windows.isEmpty {
                 QuotaEmptyState(snapshot: snapshot)
@@ -269,18 +284,23 @@ struct QuotaCard: View {
                     .padding(.vertical, 10)
                     .frame(maxHeight: .infinity)
             } else {
-                VStack(spacing: 6) {
+                VStack(spacing: 5) {
                     ForEach(visibleWindows) { window in
                         RateLimitRow(window: window)
                     }
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 9)
+                .padding(.bottom, 10)
                 .frame(maxHeight: .infinity, alignment: .top)
             }
         }
         .frame(height: 154, alignment: .top)
-        .panelBackground()
+        .background(QuotaAuroraBackground().allowsHitTesting(false))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(AppTheme.heroLight.opacity(0.16), lineWidth: 0.75)
+        )
         .onChange(of: snapshot.provider) { _ in currentPage = 0 }
         .onChange(of: snapshot.windows.count) { _ in
             currentPage = min(currentPage, max(0, pages.count - 1))
