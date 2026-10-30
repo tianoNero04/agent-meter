@@ -19,7 +19,7 @@ struct PopoverView: View {
             AppTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // 顶部杂志报头（Masthead）通栏（含品牌、选项卡与右上角面板图标）
+                // 顶部杂志报头（Masthead）通栏（含品牌与选项卡）
                 PopoverTopBar(model: model, selection: $selectedSection, openWindow: openWindow) { provider in
                     selectProvider(provider)
                 }
@@ -138,7 +138,7 @@ private struct PopoverProvidersEmptyState: View {
     }
 }
 
-/// 杂志报头（Masthead Top Bar）：左侧刊头品牌标示，右侧平铺瑞士选项卡，右上角面板图标启动完整菜单
+/// 杂志报头（Masthead Top Bar）：左侧刊头品牌标示，右侧平铺瑞士选项卡
 struct PopoverTopBar: View {
     @ObservedObject var model: DashboardModel
     @Binding var selection: PopoverSection
@@ -152,57 +152,10 @@ struct PopoverTopBar: View {
 
             Spacer(minLength: 10)
 
-            // 选项卡切换区与完整菜单面板图标
-            HStack(spacing: 9) {
-                ProviderNavigationBar(model: model, selection: $selection, onSelect: onSelect)
-
-                // 极简 0.75pt 垂直微发丝分割线
-                Rectangle()
-                    .fill(AppTheme.hairline)
-                    .frame(width: 0.75, height: 16)
-
-                // 右上角面板图标：点击后启动统一控制中心总窗口
-                PanelMenuButton {
-                    // 预先声明窗口开启，防止弹窗收起过程误切回 accessory 模式引起 Dock 图标闪烁
-                    DockPolicyManager.shared.windowWillOpen("master")
-                    NSApp.activate(ignoringOtherApps: true)
-                    openWindow(id: "master")
-                    // 打开主页面后，自动关闭当前菜单栏小窗
-                    MenuBarDismissManager.shared.dismiss()
-                }
-            }
+            ProviderNavigationBar(model: model, selection: $selection, onSelect: onSelect)
         }
         .padding(.horizontal, 14)
         .frame(height: 42)
-    }
-}
-
-/// 右上角面板图标按钮：呈现严谨构成主义微圆角与绿色悬停反馈，点击激活并启动完整控制中心
-struct PanelMenuButton: View {
-    let openMenu: () -> Void
-    @State private var isHovered = false
-
-    var body: some View {
-        Button(action: openMenu) {
-            ZStack {
-                RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-                    .fill(isHovered ? AppTheme.surface : Color.clear)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: AppTheme.geometricRadius, style: .continuous)
-                            .stroke(isHovered ? AppTheme.accentBorder : AppTheme.hairline.opacity(0.5), lineWidth: 0.75)
-                    )
-
-                Image(systemName: "macwindow.on.rectangle")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(isHovered ? AppTheme.accent : AppTheme.secondaryText)
-            }
-            .frame(width: 24, height: 24)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovered = $0 }
-        .help("打开控制中心")
-        .accessibilityLabel("打开控制中心")
     }
 }
 
